@@ -70,23 +70,25 @@ def metodo_biseccion(funcion_str, xl, xu, tol, max_iter):
 
     return {"resultados": resultados, "raiz": round(xr, 4)}
 
-# Ruta principal que maneja la vista y el formulario
-@app.route('/', methods=['GET', 'POST'])
+# Ruta 1: Pantalla de inicio
+@app.route('/')
 def inicio():
+    return render_template('index.html')
+
+# Ruta 2: Calculadora de Bisección
+@app.route('/biseccion', methods=['GET', 'POST'])
+def biseccion():
     datos = None
     if request.method == 'POST':
-        # Capturamos lo que el usuario escribió en la web
         funcion = request.form['funcion']
         xl = float(request.form['xl'])
         xu = float(request.form['xu'])
         tol = float(request.form['tol'])
         max_iter = int(request.form['max_iter'])
         
-        # Ejecutamos el método
         datos = metodo_biseccion(funcion, xl, xu, tol, max_iter)
         
-    # Enviamos los datos al HTML
-    return render_template('index.html', datos=datos)
+    return render_template('biseccion.html', datos=datos)
 
 if __name__ == '__main__':
     app.run(debug=True)
