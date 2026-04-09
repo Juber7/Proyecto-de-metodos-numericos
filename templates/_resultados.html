@@ -1,0 +1,63 @@
+{% if datos %}
+    {% if datos.error %}
+        <div class="alert alert-warning shadow-sm border-warning">
+            <h5 class="alert-heading text-dark">{{ datos.titulo }}</h5>
+            <p class="mb-2 text-dark">{{ datos.mensaje }}</p>
+            <hr class="border-warning">
+            <p class="mb-0 text-muted"><strong>Consejo:</strong> {{ datos.consejo }}</p>
+        </div>
+    {% else %}
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="alert alert-success h-100 d-flex flex-column justify-content-center">
+                    <h4 class="alert-heading">¡Raíz Encontrada!</h4>
+                    <p class="fs-4 mb-0 fw-bold">{{ datos.raiz }}</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-info h-100 d-flex flex-column justify-content-center">
+                    <strong>Nivel de Convergencia:</strong>
+                    <p class="mb-0">{{ datos.convergencia }}</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if datos.grafica %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white"><i class="bi bi-graph-up"></i> Gráfica de f(x)</div>
+                <div class="card-body text-center overflow-auto">
+                    <img src="data:image/png;base64,{{ datos.grafica }}" class="img-fluid" alt="Gráfica de la función">
+                </div>
+            </div>
+        {% endif %}
+        
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-bordered table-hover text-center mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Iteración</th>
+                        <th>xl</th>
+                        <th>xu</th>
+                        <th>xr</th>
+                        <th>f(xl)</th>
+                        <th>f(xr)</th>
+                        <th>Error (%)</th>
+                    </tr>
+                </thead>
+                <tbody class="table-group-divider">
+                    {% for fila in datos.resultados %}
+                    <tr>
+                        <td>{{ fila.iteracion }}</td>
+                        <td>{{ fila.xl }}</td>
+                        <td>{{ fila.xu }}</td>
+                        <td class="fw-bold text-primary">{{ fila.xr }}</td>
+                        <td>{{ fila.fxl }}</td>
+                        <td>{{ fila.fxr }}</td>
+                        <td>{{ fila.ea }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endif %}

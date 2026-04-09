@@ -1,27 +1,22 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block contenido %}
-    <div class="container bg-white p-5 rounded shadow-sm">
-        <h1 class="display-5 text-primary">Proyecto de Métodos Numéricos</h1>
-        <p class="lead">Bienvenido a la herramienta de cálculo. Usa el menú lateral para seleccionar un método.</p>
-        <hr>
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card border-primary mb-3">
-                    <div class="card-body text-primary">
-                        <h5 class="card-title"><i class="bi bi-arrow-down-right-circle"></i> Métodos Cerrados</h5>
-                        <p class="card-text">Requieren de un intervalo que encierre a la raíz. (Ej: Bisección).</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card border-success mb-3">
-                    <div class="card-body text-success">
-                        <h5 class="card-title"><i class="bi bi-arrows-fullscreen"></i> Métodos Abiertos</h5>
-                        <p class="card-text">Requieren valores iniciales sin necesidad de encerrar la raíz. (Ej: Newton).</p>
-                    </div>
-                </div>
-            </div>
+  <div class="d-flex flex-grow-1 align-items-center justify-content-center w-100">
+    <div class="matrix-wrapper">
+      <h1 class="display-4 text-primary fw-bold mb-3">Proyecto de Métodos Numéricos</h1>
+      <p class="lead text-muted mb-5">Bienvenido a la herramienta de cálculo. Usa el menú lateral para iniciar.</p>
+
+      <div class="row justify-content-center gap-4">
+        <div class="col-md-5 p-4 border rounded shadow-sm bg-white" style="transition: transform 0.2s;">
+          <h5 class="text-primary"><i class="bi bi-arrow-down-right-circle"></i> Métodos Cerrados</h5>
+          <p class="text-muted small mb-0">Requieren de un intervalo que encierre a la raíz. (Ej: Bisección).</p>
         </div>
+
+        <div class="col-md-5 p-4 border rounded shadow-sm bg-white" style="transition: transform 0.2s;">
+          <h5 class="text-success"><i class="bi bi-arrows-fullscreen"></i> Métodos Abiertos</h5>
+          <p class="text-muted small mb-0">Requieren valores iniciales sin necesidad de encerrar la raíz. (Ej: Newton).</p>
+        </div>
+      </div>
     </div>
+  </div>
 {% endblock %}
