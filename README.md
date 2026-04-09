@@ -43,12 +43,12 @@ home.py: Archivo principal con las rutas de Flask y la lógica de los métodos n
 
 * **templates/:** Contiene las vistas HTML.
 
-base.html: Plantilla maestra con la barra de navegación lateral.
+* **base.html:** Plantilla maestra con la barra de navegación lateral.
 
-index.html: Pantalla de bienvenida.
+* **index.html:** Pantalla de bienvenida.
 
-biseccion.html: Vista de la calculadora del método de bisección.
+* **biseccion.html:** Vista de la calculadora del método de bisección.
 
-_resultados.html: Plantilla parcial reutilizable para mostrar tablas y gráficas.
+* **_resultados.html:** Plantilla parcial reutilizable para mostrar tablas y gráficas.
 
-.gitignore: Archivos y carpetas que Git no debe subir (como venv/).
+* **.gitignore:** Archivos y carpetas que Git no debe subir (como venv/).
