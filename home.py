@@ -11,36 +11,45 @@ import math
 app = Flask(__name__)
 
 def metodo_biseccion(funcion_str, xl, xu, tol, max_iter):
-    # 1. Limpieza y traducción de la función
-    funcion_str = funcion_str.replace('^', '**')
-    funcion_str = funcion_str.replace('ln', 'log')
-    funcion_str = funcion_str.replace('x(', 'x*(').replace('X(', 'x*(')
-    
-    # 2. Preparar la función matemática
+    # 1. Limpieza de la función
+    funcion_str = funcion_str.replace('^', '**').replace('ln', 'log').replace('x(', 'x*(').replace('X(', 'x*(')
     x = sp.Symbol('x')
+    
     try:
-        funcion_simbolica = sp.sympify(funcion_str)
+        # 2. Traducción matemática (Forzando la 'e')
+        diccionario_matematico = {'e': sp.E, 'pi': sp.pi}
+        funcion_simbolica = sp.sympify(funcion_str, locals=diccionario_matematico)
+        
+        # Un seguro extra por si la 'e' se escapa
+        funcion_simbolica = funcion_simbolica.subs(sp.Symbol('e'), sp.E)
+        
         f = sp.lambdify(x, funcion_simbolica, 'numpy') 
-    except Exception as err: # Atrapamos el error exacto en la variable 'err'
+
+        # 3. LA PRUEBA DE FUEGO: Evaluamos los límites AQUÍ ADENTRO
+        xl_original = xl
+        xu_original = xu
+        
+        # Obligamos a que el resultado sea un número decimal (float)
+        # Si la función tiene errores o letras sueltas, esto fallará y activará la alerta roja
+        fxl = float(f(xl))
+        fxu = float(f(xu))
+
+    except Exception as err:
         return {
             "error": True,
             "titulo": "🛑 Error de Sintaxis Matemática",
-            "mensaje": f"No se pudo evaluar la función. Detalle técnico: {str(err)}",
-            "consejo": "Recuerda usar '*' para multiplicaciones (ej: 2*x) y 'exp(x)' en lugar de 'e' para la exponencial.",
+            "mensaje": f"No se pudo calcular la función. Detalle técnico: {str(err)}",
+            "consejo": "Recuerda usar '*' para multiplicar (ej: 2*x) y usar 'exp(x)' en lugar de la letra 'e'.",
             "link_sympy": "https://docs.sympy.org/latest/tutorials/intro-tutorial/gotchas.html"
         }
-    # ... (el resto del código sigue exactamente igual)
 
-    # 2. Validar que exista un cambio de signo (condición de bisección)
-    fxl = f(xl)
-    fxu = f(xu)
-    
+    # === Si llegamos aquí, los números son perfectos ===
     if fxl * fxu >= 0:
         return {
             "error": True,
             "titulo": "⚠️ Intervalo sin cambio de signo",
-            "mensaje": f"Evaluamos tus límites y obtuvimos f({xl}) = {round(fxl, 4)} y f({xu}) = {round(fxu, 4)}. Como ambos resultados tienen el mismo signo, la curva no cruza el cero (eje X) en este tramo.",
-            "consejo": "Para que la bisección funcione, un resultado debe ser positivo y el otro negativo. ¡Intenta con otros valores para xl y xu!"
+            "mensaje": f"Evaluamos tus límites y obtuvimos f({xl}) = {round(fxl, 4)} y f({xu}) = {round(fxu, 4)}. Mismo signo.",
+            "consejo": "Para la bisección, un resultado debe ser positivo y el otro negativo."
         }
 
     resultados = []
@@ -121,33 +130,44 @@ def metodo_biseccion(funcion_str, xl, xu, tol, max_iter):
 # MÉTODO 2: REGLA FALSA (FALSA POSICIÓN)
 # ==========================================
 def metodo_falsa_posicion(funcion_str, xl, xu, tol, max_iter):
-    funcion_str = funcion_str.replace('^', '**').replace('ln', 'log')
-    funcion_str = funcion_str.replace('x(', 'x*(').replace('X(', 'x*(')
+    funcion_str = funcion_str.replace('^', '**').replace('ln', 'log').replace('x(', 'x*(').replace('X(', 'x*(')
     x = sp.Symbol('x')
     
     try:
-        funcion_simbolica = sp.sympify(funcion_str)
+        # 2. Traducción matemática (Forzando la 'e')
+        diccionario_matematico = {'e': sp.E, 'pi': sp.pi}
+        funcion_simbolica = sp.sympify(funcion_str, locals=diccionario_matematico)
+        
+        # Un seguro extra por si la 'e' se escapa
+        funcion_simbolica = funcion_simbolica.subs(sp.Symbol('e'), sp.E)
+        
         f = sp.lambdify(x, funcion_simbolica, 'numpy') 
-    except Exception as err: # Atrapamos el error exacto en la variable 'err'
+
+        # 3. LA PRUEBA DE FUEGO: Evaluamos los límites AQUÍ ADENTRO
+        xl_original = xl
+        xu_original = xu
+        
+        # Obligamos a que el resultado sea un número decimal (float)
+        # Si la función tiene errores o letras sueltas, esto fallará y activará la alerta roja
+        fxl = float(f(xl))
+        fxu = float(f(xu))
+
+    except Exception as err:
         return {
             "error": True,
             "titulo": "🛑 Error de Sintaxis Matemática",
-            "mensaje": f"No se pudo evaluar la función. Detalle técnico: {str(err)}",
-            "consejo": "Recuerda usar '*' para multiplicaciones (ej: 2*x) y 'exp(x)' en lugar de 'e' para la exponencial.",
+            "mensaje": f"No se pudo calcular la función. Detalle técnico: {str(err)}",
+            "consejo": "Recuerda usar '*' para multiplicar (ej: 2*x) y usar 'exp(x)' en lugar de la letra 'e'.",
             "link_sympy": "https://docs.sympy.org/latest/tutorials/intro-tutorial/gotchas.html"
         }
 
-    xl_original = xl
-    xu_original = xu
-    fxl = f(xl)
-    fxu = f(xu)
-    
+    # === Si llegamos aquí, los números son perfectos ===
     if fxl * fxu >= 0:
         return {
             "error": True,
             "titulo": "⚠️ Intervalo sin cambio de signo",
             "mensaje": f"Evaluamos tus límites y obtuvimos f({xl}) = {round(fxl, 4)} y f({xu}) = {round(fxu, 4)}. Mismo signo.",
-            "consejo": "Para la Regla Falsa, un resultado debe ser positivo y el otro negativo."
+            "consejo": "Para la bisección, un resultado debe ser positivo y el otro negativo."
         }
 
     resultados = []
@@ -503,7 +523,11 @@ def serie_taylor(funcion_str, x0, x_eval, orden):
     plt.plot(x_eval, float(aproximacion), 'yo', label=f'Aprox ({round(float(aproximacion), 2)})')
     
     plt.grid(color='gray', linestyle=':', linewidth=0.5)
-    plt.ylim(min(y_vals_original)-2, max(y_vals_original)+2) # Limitar altura para que no se dispare
+    # Filtrar valores matemáticamente inválidos (NaN o Infinitos) antes de fijar la altura
+    y_validos = y_vals_original[np.isfinite(y_vals_original)]
+    
+    if len(y_validos) > 0:
+        plt.ylim(np.min(y_validos) - 2, np.max(y_validos) + 2)
     plt.legend()
     plt.tight_layout()
 
@@ -521,7 +545,7 @@ def serie_taylor(funcion_str, x0, x_eval, orden):
         "grafica": grafica_url
     }
 
-# Ruta 1: Pantalla de inicio
+# Rutas denavegación
 @app.route('/')
 def inicio():
     return render_template('index.html')
@@ -595,6 +619,10 @@ def taylor():
         datos = serie_taylor(funcion, x0, x_eval, orden)
         
     return render_template('taylor.html', datos=datos)
+
+@app.route('/punto_fijo')
+def punto_fijo():
+    return render_template('punto_fijo.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

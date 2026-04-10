@@ -31,7 +31,7 @@ python -m venv venv
 ### 3. Instalar las librerias necesarias
 En la terminal (powershell)
 ```bash
-pip install Flask sympy numpy matplotlib
+pip install Flask sympy numpy matplotlib gunicorn
 ```
 
 Y para correr el servidor
