@@ -544,6 +544,119 @@ def serie_taylor(funcion_str, x0, x_eval, orden):
         "convergencia": "Aproximación Polinomial (A mayor orden n, menor es el error).",
         "grafica": grafica_url
     }
+    
+# ==========================================
+# MÉTODO 6: PUNTO FIJO (CON PREDICTOR)
+# ==========================================
+def metodo_punto_fijo(gx_str, x0, tol, max_iter):
+    gx_str = gx_str.replace('^', '**').replace('ln', 'log').replace('x(', 'x*(').replace('X(', 'x*(')
+    x = sp.Symbol('x')
+    
+    try:
+        diccionario_matematico = {'e': sp.E, 'pi': sp.pi}
+        g_simbolica = sp.sympify(gx_str, locals=diccionario_matematico)
+        g_simbolica = g_simbolica.subs(sp.Symbol('e'), sp.E)
+        
+        g = sp.lambdify(x, g_simbolica, 'numpy') 
+        
+        # EL PREDICTOR DE CONVERGENCIA (La magia)
+        derivada_g = sp.diff(g_simbolica, x) # Derivamos g(x)
+        dg = sp.lambdify(x, derivada_g, 'numpy')
+        
+        # Evaluamos el valor absoluto de g'(x0)
+        criterio_convergencia = abs(float(dg(x0)))
+        
+        # Generamos el diagnóstico
+        if criterio_convergencia < 1:
+            diagnostico = f"¡Excelente despeje! |g'(x0)| = {round(criterio_convergencia, 4)} < 1. Convergencia garantizada."
+            color_diag = "success"
+        else:
+            diagnostico = f"¡Alerta de Divergencia! |g'(x0)| = {round(criterio_convergencia, 4)} > 1. Es muy probable que la función explote al infinito."
+            color_diag = "danger"
+
+    except Exception as err:
+        return {
+            "error": True,
+            "titulo": "🛑 Error de Sintaxis Matemática",
+            "mensaje": f"No se pudo evaluar g(x) o su derivada. Detalle: {str(err)}",
+            "consejo": "Recuerda usar '*' para multiplicaciones y 'exp(x)' en lugar de 'e'."
+        }
+
+    resultados = []
+    xi = x0
+    diverge = False
+
+    for i in range(1, max_iter + 1):
+        try:
+            gxi = float(g(xi))
+        except OverflowError:
+            diverge = True
+            break
+            
+        if abs(gxi) > 1e6:
+            diverge = True
+            break
+
+        ea = abs((gxi - xi) / gxi) * 100 if gxi != 0 else 100
+
+        resultados.append({
+            "iteracion": i,
+            "xi": round(xi, 6),
+            "gxi": round(gxi, 6),
+            "ea": round(ea, 6) if i > 1 else "---"
+        })
+
+        if i > 1 and ea < tol:
+            xi = gxi
+            break
+            
+        xi = gxi
+
+    if diverge:
+        return {
+            "error": True,
+            "titulo": "🚀 ¡El método explotó (Divergencia)!",
+            "mensaje": diagnostico, # Mostramos por qué explotó basado en la derivada
+            "consejo": "Esta calculadora hace milagros, pero no sabe despejar por ti. Si no sabes hacer un despeje algebraico válido para llegar a g(x), deberías considerar seriamente regresar al curso propedéutico. 📚"
+        }
+
+    # === GENERAR LA GRÁFICA ===
+    margen = abs(xi - x0) + 2
+    x_min = min(x0, xi) - margen
+    x_max = max(x0, xi) + margen
+    
+    x_vals = np.linspace(x_min, x_max, 200)
+    x_vals = np.where(x_vals == 0, 1e-10, x_vals) 
+    y_vals_g = g(x_vals)
+    y_vals_identidad = x_vals 
+
+    altura_maxima = max(abs(g(x_min)), abs(g(x_max))) * 2
+    y_vals_g = np.clip(y_vals_g, -altura_maxima, altura_maxima)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(x_vals, y_vals_g, label=f'g(x)', color='#6f42c1', linewidth=2) 
+    plt.plot(x_vals, y_vals_identidad, label=f'y = x', color='gray', linestyle='--', linewidth=1.5) 
+    plt.axhline(0, color='black', linewidth=1) 
+    plt.axvline(x0, color='orange', linestyle=':', label='x0 inicial')
+    plt.plot(xi, xi, 'ro', markersize=8, label=f'Raíz ({round(xi, 4)})') 
+    
+    plt.grid(color='gray', linestyle=':', linewidth=0.5)
+    plt.legend()
+    plt.tight_layout()
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png', transparent=True)
+    img.seek(0)
+    grafica_url = base64.b64encode(img.getvalue()).decode('utf8')
+    plt.close()
+
+    return {
+        "tipo": "punto_fijo", 
+        "resultados": resultados, 
+        "raiz": round(xi, 6),
+        "convergencia": diagnostico, # Mandamos el diagnóstico a la tarjeta azul
+        "grafica": grafica_url
+    }
 
 # Rutas denavegación
 @app.route('/')
@@ -620,9 +733,18 @@ def taylor():
         
     return render_template('taylor.html', datos=datos)
 
-@app.route('/punto_fijo')
+@app.route('/punto_fijo', methods=['GET', 'POST'])
 def punto_fijo():
-    return render_template('punto_fijo.html')
+    datos = None
+    if request.method == 'POST':
+        gx = request.form['gx']
+        x0 = float(request.form['x0'])
+        tol = float(request.form['tol'])
+        max_iter = int(request.form['max_iter'])
+        
+        datos = metodo_punto_fijo(gx, x0, tol, max_iter)
+        
+    return render_template('punto_fijo.html', datos=datos)
 
 if __name__ == '__main__':
     app.run(debug=True)
