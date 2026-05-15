@@ -6,6 +6,7 @@ matplotlib.use('Agg') # Esto evita que la gráfica intente abrirse en una ventan
 import matplotlib.pyplot as plt
 import io
 import base64
+import cmath
 import math
 import re
 from sympy.parsing.latex import parse_latex
@@ -650,66 +651,77 @@ def metodo_horner(latex_str, x0):
         return {"error": True, "titulo": "🛑 Polinomio vacío", "mensaje": "Escribe tu polinomio en la pizarra."}
 
     try:
-        # 1. Limpieza y Traducción a SymPy
+        # 1. Limpieza bestial
         latex_limpio = latex_str.replace(r'\mathrm{e}', 'e').replace(r'\exponentialE', 'e').replace(r'\cdot', '*').lower()
-        f_simbolica = parse_latex(latex_limpio).subs(sp.Symbol('e'), sp.E)
+        f_latex = parse_latex(latex_limpio)
+        # Forzamos la expansión para destruir cualquier formato oculto
+        f_simbolica = sp.expand(sp.sympify(str(f_latex))) 
 
-        # 2. Detectar variable
+        # 2. Variable dinámica
         simbolos_usados = [s for s in f_simbolica.free_symbols if str(s) not in ['e', 'pi']]
         if len(simbolos_usados) > 1: return {"error": True, "titulo": "🛑 Demasiadas Variables", "mensaje": f"Detectamos: {simbolos_usados}."}
         x = simbolos_usados[0] if len(simbolos_usados) == 1 else sp.Symbol('x')
 
-        # === 3. EXTRACCIÓN MÁGICA DE COEFICIENTES (CORREGIDA) ===
-        # Primero expandimos (por si el usuario escribió algo como (x+1)^2)
-        f_expandida = sp.expand(f_simbolica)
         
-        # Usamos as_poly(x), que es a prueba de balas. Si no es polinomio, devuelve None.
-        polinomio = f_expandida.as_poly(x)
-        
-        if polinomio is None:
-            return {"error": True, "titulo": "⚠️ No es un Polinomio", "mensaje": "Horner solo acepta polinomios enteros (ej. x^3 - 2x + 1). No uses fracciones, raíces, ni senos."}
+        # Sacamos el grado máximo de la ecuación. Si esto falla, es porque metieron un seno o un logaritmo.
+        try:
+            grado_maximo = sp.degree(f_simbolica, gen=x)
+            if str(grado_maximo) == 'oo' or str(grado_maximo) == '-oo': # Si tira infinito, no es polinomio
+                raise ValueError()
+        except:
+            return {"error": True, "titulo": "⚠️ Función Inválida", "mensaje": "Esto no parece un polinomio. Horner solo acepta cosas como x^3 - 2x + 1."}
 
-        # Extraemos los coeficientes reales y los convertimos a decimales
-        coeficientes = [float(c) for c in polinomio.all_coeffs()]
-        grado_maximo = len(coeficientes) - 1
+        # Armamos la lista de coeficientes manualmente (del grado mayor al 0)
+        coeficientes = []
+        for i in range(int(grado_maximo), -1, -1):
+            if i == 0:
+                # El término independiente (el número solo) se saca evaluando x=0
+                coef = f_simbolica.subs(x, 0)
+            else:
+                # Le arrancamos el número que acompaña a la x^i
+                coef = f_simbolica.coeff(x, i)
+            
+            coeficientes.append(float(coef))
 
     except Exception as err:
-        return {"error": True, "titulo": "🛑 Error Matemático", "mensaje": str(err)}
+        return {"error": True, "titulo": "🛑 Error Matemático", "mensaje": f"Detalle técnico: {str(err)}"}
 
+    # ==========================================
+    # LA DIVISIÓN SINTÉTICA PURA Y DURA
+    # ==========================================
     resultados = []
     
-    # El primer coeficiente 'b' baja directo y es igual al primer 'a'
+    # El primer número baja directo
     b_actual = coeficientes[0] 
 
     resultados.append({
-        "grado": grado_maximo,
+        "grado": int(grado_maximo),
         "a": round(b_actual, 8),
         "operacion": "---",
         "b": round(b_actual, 8)
     })
 
-    # 4. Ciclo de Horner (La División Sintética)
+    # Bucle de multiplicar por x0 y sumar
     for i in range(1, len(coeficientes)):
         a_actual = coeficientes[i]
         
-        # Multiplicamos el centro x0 por el b anterior
         operacion_val = b_actual * float(x0)
-        
-        # Sumamos hacia abajo
         b_nuevo = a_actual + operacion_val
 
         resultados.append({
-            "grado": grado_maximo - i,
+            "grado": int(grado_maximo) - i,
             "a": round(a_actual, 8),
             "operacion": round(operacion_val, 8),
             "b": round(b_nuevo, 8)
         })
         b_actual = b_nuevo
 
-    # El último 'b' es el residuo, que equivale a evaluar P(x0)
+    # El último valor calculado es nuestra respuesta
     residuo = b_actual
 
-    # 5. Generar la Gráfica Visual
+    # ==========================================
+    # GRÁFICA MATPLOTLIB
+    # ==========================================
     margen = 3
     x_vals = np.linspace(float(x0) - margen, float(x0) + margen, 200)
     try:
@@ -723,7 +735,6 @@ def metodo_horner(latex_str, x0):
     plt.plot(x_vals, y_vals, label=f'P({x})', color='#fd7e14', linewidth=2)
     plt.axhline(0, color='black', linewidth=1)
     
-    # Dibujamos el punto exacto evaluado
     plt.plot(float(x0), residuo, 'ro', markersize=8, label=f'P({x0}) = {round(residuo, 5)}')
     plt.axvline(float(x0), color='gray', linestyle=':')
     
@@ -736,41 +747,110 @@ def metodo_horner(latex_str, x0):
     return {
         "tipo": "horner",
         "resultados": resultados,
-        "raiz": round(residuo, 8), # Guardamos el residuo aquí para que el HTML lo muestre
-        "convergencia": "Evaluación Polinomial mediante División Sintética.",
+        "raiz": round(residuo, 8),
+        "convergencia": "Evaluación por División Sintética.",
         "grafica": grafica_url
     }
-    
 # ==========================================
 # MÉTODO 8: HORNER-NEWTON (BIRGE-VIETA)
 # ==========================================
-def metodo_horner_newton(funcion_str, x0, tol, max_iter):
-    funcion_str = funcion_str.replace('^', '**').replace('x(', 'x*(').replace('X(', 'x*(')
-    x = sp.Symbol('x')
-    
+def metodo_horner_newton(latex_str, x0, tol, max_iter):
+    if not latex_str or latex_str.strip() == "":
+        return {"error": True, "titulo": "🛑 Polinomio vacío", "mensaje": "Escribe tu polinomio."}
+
     try:
-        f_simbolica = sp.sympify(funcion_str)
-        
-        # Validación de seguridad: ¡Solo polinomios!
-        if not f_simbolica.is_polynomial(x):
-            return {
-                "error": True,
-                "titulo": "🛑 Función No Polinomial",
-                "mensaje": "El Método de Horner-Newton utiliza doble división sintética y SOLO funciona con polinomios.",
-                "consejo": "Ingresa una función polinomial válida (Ej: x**3 - 2*x**2 - 5). No uses fracciones, senos o logaritmos."
-            }
-            
-        polinomio = sp.Poly(f_simbolica, x)
-        coeffs = polinomio.all_coeffs() 
-        f_numpy = sp.lambdify(x, f_simbolica, 'numpy') 
-        
+        # 1. Limpieza bestial (igual que Horner normal)
+        latex_limpio = latex_str.replace(r'\mathrm{e}', 'e').replace(r'\exponentialE', 'e').replace(r'\cdot', '*').lower()
+        f_latex = parse_latex(latex_limpio)
+        f_simbolica = sp.expand(sp.sympify(str(f_latex))) 
+
+        x = [s for s in f_simbolica.free_symbols if str(s) not in ['e', 'pi']][0] if f_simbolica.free_symbols else sp.Symbol('x')
+
+        # Extraemos coeficientes a lo bruto
+        grado_maximo = sp.degree(f_simbolica, gen=x)
+        if str(grado_maximo) in ['oo', '-oo']: raise ValueError()
+
+        coef_originales = []
+        for i in range(int(grado_maximo), -1, -1):
+            coef = f_simbolica.subs(x, 0) if i == 0 else f_simbolica.coeff(x, i)
+            coef_originales.append(float(coef))
+
     except Exception as err:
-        return {
-            "error": True,
-            "titulo": "🛑 Error de Sintaxis Matemática",
-            "mensaje": f"No se pudo evaluar el polinomio. Detalle: {str(err)}",
-            "consejo": "Asegúrate de escribir el polinomio correctamente."
-        }
+        return {"error": True, "titulo": "⚠️ Función Inválida", "mensaje": "Asegúrate de ingresar un polinomio válido."}
+
+    resultados = []
+    xi = float(x0)
+    
+    # === MINIFUNCIÓN: Hace una división sintética rápida ===
+    def hacer_horner(coefs, valor_x):
+        b = coefs[0]
+        nuevos_coefs = [b]
+        for i in range(1, len(coefs)):
+            b = coefs[i] + b * valor_x
+            nuevos_coefs.append(b)
+        # Retornamos el residuo y los coeficientes sobrantes (el cociente)
+        return b, nuevos_coefs[:-1] 
+
+    # 2. Ciclo de Búsqueda de la Raíz
+    for i in range(1, max_iter + 1):
+        # Horner 1: Evaluamos el polinomio para sacar P(xi)
+        pxi, coef_q = hacer_horner(coef_originales, xi)
+        
+        # Horner 2: Evaluamos el cociente para sacar P'(xi)
+        dpxi, _ = hacer_horner(coef_q, xi)
+
+        if dpxi == 0:
+            return {"error": True, "titulo": "⚠️ División por Cero", "mensaje": "La derivada se hizo cero (recta horizontal)."}
+
+        # Newton-Raphson aplicado
+        x_siguiente = xi - (pxi / dpxi)
+        
+        ea = abs((x_siguiente - xi) / x_siguiente) * 100 if x_siguiente != 0 else 100
+
+        # Guardamos usando las variables que tu _resultados.html ya espera
+        resultados.append({
+            "iteracion": i,
+            "xi": round(xi, 8),
+            "pxi": round(pxi, 8),
+            "dpxi": round(dpxi, 8),
+            "x_siguiente": round(x_siguiente, 8),
+            "ea": round(ea, 8) if i > 1 else "---"
+        })
+
+        if ea < tol:
+            xi = x_siguiente
+            break
+        
+        xi = x_siguiente
+
+    # 3. Gráfica
+    margen = abs(xi - float(x0)) + 2
+    x_vals = np.linspace(min(float(x0), xi) - margen, max(float(x0), xi) + margen, 200)
+    try:
+        f_lambdify = sp.lambdify(x, f_simbolica, 'numpy')
+        y_vals = f_lambdify(x_vals)
+        if isinstance(y_vals, (int, float)): y_vals = np.full_like(x_vals, y_vals)
+        y_vals = np.clip(y_vals, -100, 100) # Evita deformaciones
+    except: y_vals = np.zeros_like(x_vals)
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(x_vals, y_vals, label=f'P({x})', color='#20c997', linewidth=2)
+    plt.axhline(0, color='black', linewidth=1)
+    plt.plot(xi, 0, 'go', markersize=8, label=f'Raíz ({round(xi, 5)})')
+    plt.axvline(float(x0), color='orange', linestyle=':', label='x0 inicial')
+    plt.grid(color='gray', linestyle=':', linewidth=0.5)
+    plt.legend(); plt.tight_layout()
+
+    img = io.BytesIO(); plt.savefig(img, format='png', transparent=True); img.seek(0)
+    grafica_url = base64.b64encode(img.getvalue()).decode('utf8'); plt.close()
+
+    return {
+        "tipo": "horner_newton",
+        "resultados": resultados,
+        "raiz": round(xi, 8),
+        "convergencia": "Cuadrática (Newton apoyado por doble Horner).",
+        "grafica": grafica_url
+    }
 
     # Función auxiliar para hacer la división sintética rápida
     def division_sintetica(coeficientes, valor_x):
@@ -853,187 +933,252 @@ def metodo_horner_newton(funcion_str, x0, tol, max_iter):
         "grafica": grafica_url
     }
     
-# ==========================================
-# MÉTODO 9: MÉTODO DE MÜLLER
-# ==========================================
-def metodo_muller(funcion_str, x0, x1, x2, tol, max_iter):
-    funcion_str = funcion_str.replace('^', '**').replace('ln', 'log').replace('x(', 'x*(').replace('X(', 'x*(')
-    x = sp.Symbol('x')
-    
+def metodo_muller(latex_str, x0, x1, x2, tol, max_iter):
+    if not latex_str or latex_str.strip() == "":
+        return {"error": True, "titulo": "🛑 Función vacía", "mensaje": "Escribe tu f(x)."}
+
     try:
-        diccionario_matematico = {'e': sp.E, 'pi': sp.pi}
-        f_simbolica = sp.sympify(funcion_str, locals=diccionario_matematico)
-        f = sp.lambdify(x, f_simbolica, 'numpy') 
+        # 1. Limpieza a lo bruto (tu técnica infalible)
+        latex_limpio = latex_str.replace(r'\mathrm{e}', 'e').replace(r'\exponentialE', 'e').replace(r'\cdot', '*').lower()
+        f_latex = parse_latex(latex_limpio)
+        f_simbolica = sp.expand(sp.sympify(str(f_latex)))
+
+        simbolos_usados = [s for s in f_simbolica.free_symbols if str(s) not in ['e', 'pi']]
+        if len(simbolos_usados) > 1: return {"error": True, "titulo": "🛑 Demasiadas Variables", "mensaje": f"Detectamos: {simbolos_usados}."}
+        x = simbolos_usados[0] if len(simbolos_usados) == 1 else sp.Symbol('x')
+
     except Exception as err:
-        return {
-            "error": True,
-            "titulo": "🛑 Error de Sintaxis",
-            "mensaje": f"No se pudo evaluar la función. Detalle: {str(err)}",
-            "consejo": "Usa '*' para multiplicar y 'exp(x)' para la base e."
-        }
+        return {"error": True, "titulo": "🛑 Error Matemático", "mensaje": f"Detalle: {str(err)}"}
 
     resultados = []
-    # Usamos números complejos internamente por si la raíz lo requiere
-    h0 = x1 - x0
-    h1 = x2 - x1
-    d0 = (f(x1) - f(x0)) / h0
-    d1 = (f(x2) - f(x1)) / h1
-    a = (d1 - d0) / (h1 + h0)
+    
+    # Muller trabaja mejor si forzamos a que todo sea "complex" desde el inicio
+    cx0, cx1, cx2 = complex(x0), complex(x1), complex(x2)
 
+    # Minifunción para evaluar la fórmula y forzar el resultado a complejo
+    def evaluar(val):
+        return complex(f_simbolica.subs(x, val).evalf())
+
+    # 2. Ciclo de Muller
     for i in range(1, max_iter + 1):
-        b = d1 + h1 * a
-        c = f(x2)
-        
-        # Discriminante
-        discriminante = np.lib.scimath.sqrt(b**2 - 4*a*c)
-        
-        # Elegimos el signo que maximice el denominador
-        if abs(b + discriminante) > abs(b - discriminante):
-            denominador = b + discriminante
-        else:
-            denominador = b - discriminante
-            
-        dx = -2 * c / denominador
-        x3 = x2 + dx
-        
-        # Error aproximado
-        ea = abs(dx / x3) * 100 if x3 != 0 else 100
-        
-        resultados.append({
-            "iteracion": i,
-            "x0": round(complex(x0).real, 8),
-            "x1": round(complex(x1).real, 8),
-            "x2": round(complex(x2).real, 8),
-            "xr": round(complex(x3).real, 8),
-            "fxr": round(complex(f(x3)).real, 8),
-            "ea": round(complex(ea).real, 8) if i > 1 else "---"
-        })
+        try:
+            f0 = evaluar(cx0)
+            f1 = evaluar(cx1)
+            f2 = evaluar(cx2)
 
-        if i > 1 and ea < tol:
-            break
+            # Distancias
+            h0 = cx1 - cx0
+            h1 = cx2 - cx1
             
-        # Actualizamos puntos para la siguiente iteración
-        x0, x1, x2 = x1, x2, x3
-        h0 = x1 - x0
-        h1 = x2 - x1
-        d0 = (f(x1) - f(x0)) / h0
-        d1 = (f(x2) - f(x1)) / h1
-        a = (d1 - d0) / (h1 + h0)
+            if h0 == 0 or h1 == 0:
+                return {"error": True, "titulo": "⚠️ Estancamiento", "mensaje": "Los puntos colapsaron. Intenta con otros valores iniciales."}
 
-    # Gráfica
-    margen = 2
-    x_min = min(x0.real, x1.real, x2.real) - margen
-    x_max = max(x0.real, x1.real, x2.real) + margen
-    x_vals = np.linspace(x_min, x_max, 200)
-    y_vals = f(x_vals)
+            # Diferencias divididas
+            d0 = (f1 - f0) / h0
+            d1 = (f2 - f1) / h1
+
+            # Coeficientes de la parábola
+            a = (d1 - d0) / (h1 + h0)
+            b = a * h1 + d1
+            c = f2
+
+            # El corazón de Muller: la raíz cuadrada que puede dar números imaginarios
+            discriminante = cmath.sqrt(b**2 - 4*a*c)
+
+            # Muller exige elegir el signo que haga el denominador más GRANDE para no dividir entre cero
+            den_mas = b + discriminante
+            den_menos = b - discriminante
+            den = den_mas if abs(den_mas) >= abs(den_menos) else den_menos
+
+            if den == 0:
+                return {"error": True, "titulo": "⚠️ Denominador Cero", "mensaje": "El denominador de Muller se hizo cero."}
+
+            # Calculamos la nueva raíz
+            dx = -2 * c / den
+            xr = cx2 + dx
+
+            # Calculamos el error (usamos abs() que saca la magnitud real)
+            ea = abs((xr - cx2) / xr) * 100 if xr != 0 else 100
+
+            # Formateador visual: si la parte imaginaria es 0, lo muestra como número normal
+            def fmt(num):
+                if abs(num.imag) < 1e-8: return round(num.real, 6)
+                return f"{round(num.real, 4)} + {round(num.imag, 4)}i".replace("+ -", "- ")
+
+            resultados.append({
+                "iteracion": i,
+                "x0": fmt(cx0),
+                "x1": fmt(cx1),
+                "x2": fmt(cx2),
+                "xr": fmt(xr),
+                "fxr": fmt(evaluar(xr)),
+                "ea": round(ea, 6) if i > 1 else "---"
+            })
+
+            if ea < tol:
+                break
+            
+            # Recorremos los puntos
+            cx0, cx1, cx2 = cx1, cx2, xr
+
+        except Exception as e:
+            return {"error": True, "titulo": "🛑 Error de Iteración", "mensaje": str(e)}
+
+    # Extraemos la raíz final para mostrar
+    raiz_mostrar = fmt(xr)
+    es_compleja = abs(xr.imag) > 1e-8
+
+    # 3. Gráfica
+    margen = 3
+    x_vals = np.linspace(cx2.real - margen, cx2.real + margen, 200)
+    try:
+        f_lambdify = sp.lambdify(x, f_simbolica, 'numpy')
+        y_vals = f_lambdify(x_vals)
+        if isinstance(y_vals, (int, float)): y_vals = np.full_like(x_vals, y_vals)
+        y_vals = np.clip(y_vals, -100, 100)
+    except: y_vals = np.zeros_like(x_vals)
 
     plt.figure(figsize=(8, 4))
-    plt.plot(x_vals, y_vals, label='f(x)', color='#e83e8c', linewidth=2) # Rosado para Müller
+    plt.plot(x_vals, y_vals, label=f'f({x})', color='#dc3545', linewidth=2)
     plt.axhline(0, color='black', linewidth=1)
-    plt.plot(x3.real, 0, 'ro', markersize=8, label=f'Raíz ({round(x3.real, 4)})')
+    
+    if es_compleja:
+        plt.plot(xr.real, 0, 'rx', markersize=10, label='Raíz Compleja (Proyectada)')
+    else:
+        plt.plot(xr.real, 0, 'go', markersize=8, label=f'Raíz Real ({raiz_mostrar})')
+        
     plt.grid(color='gray', linestyle=':', linewidth=0.5)
-    plt.legend()
-    plt.tight_layout()
+    plt.legend(); plt.tight_layout()
 
-    img = io.BytesIO()
-    plt.savefig(img, format='png', transparent=True)
-    img.seek(0)
-    grafica_url = base64.b64encode(img.getvalue()).decode('utf8')
-    plt.close()
+    img = io.BytesIO(); plt.savefig(img, format='png', transparent=True); img.seek(0)
+    grafica_url = base64.b64encode(img.getvalue()).decode('utf8'); plt.close()
 
     return {
         "tipo": "muller",
         "resultados": resultados,
-        "raiz": round(x3.real, 8),
-        "convergencia": "Superlineal (Casi cuadrática). Puede encontrar raíces complejas.",
+        "raiz": raiz_mostrar,
+        "convergencia": "Raíces Complejas e Imaginarias",
         "grafica": grafica_url
     }
     
-# ==========================================
-# MÉTODO 10: MÉTODO DE BAIRSTOW (CORREGIDO)
-# ==========================================
-def metodo_bairstow(funcion_str, r, s, tol, max_iter):
-    funcion_str = funcion_str.replace('^', '**').replace('x(', 'x*(').replace('X(', 'x*(')
-    x = sp.Symbol('x')
-    
+def metodo_bairstow(latex_str, r0, s0, tol, max_iter):
+    if not latex_str or latex_str.strip() == "":
+        return {"error": True, "titulo": "🛑 Polinomio vacío", "mensaje": "Escribe tu polinomio."}
+
     try:
-        f_simbolica = sp.sympify(funcion_str)
-        if not f_simbolica.is_polynomial(x):
-            return {
-                "error": True,
-                "titulo": "🛑 No es un Polinomio",
-                "mensaje": "Bairstow solo funciona con funciones polinomiales."
-            }
-        polinomio = sp.Poly(f_simbolica, x)
-        a = [float(c) for c in polinomio.all_coeffs()]
-        a.reverse() 
-        n = len(a) - 1
+        # 1. Limpieza bestial
+        latex_limpio = latex_str.replace(r'\mathrm{e}', 'e').replace(r'\exponentialE', 'e').replace(r'\cdot', '*').lower()
+        f_latex = parse_latex(latex_limpio)
+        f_simbolica = sp.expand(sp.sympify(str(f_latex)))
+
+        simbolos_usados = [s for s in f_simbolica.free_symbols if str(s) not in ['e', 'pi']]
+        if len(simbolos_usados) > 1: return {"error": True, "titulo": "🛑 Demasiadas Variables", "mensaje": f"Detectamos: {simbolos_usados}."}
+        x = simbolos_usados[0] if len(simbolos_usados) == 1 else sp.Symbol('x')
+
+        # === EXTRACCIÓN A LO BRUTO ===
+        grado_maximo = sp.degree(f_simbolica, gen=x)
+        if str(grado_maximo) in ['oo', '-oo']: raise ValueError()
+        if grado_maximo < 3:
+            return {"error": True, "titulo": "⚠️ Grado Insuficiente", "mensaje": "Bairstow es para polinomios grandes. Escribe uno de grado 3 o mayor (ej. x^3 - 2x^2 + 1)."}
+
+        # Coeficientes ordenados del grado mayor al independiente (a_n, a_{n-1}, ..., a_0)
+        a = []
+        for i in range(int(grado_maximo), -1, -1):
+            coef = f_simbolica.subs(x, 0) if i == 0 else f_simbolica.coeff(x, i)
+            a.append(float(coef))
+
     except Exception as err:
-        return {"error": True, "titulo": "🛑 Error", "mensaje": str(err)}
+        return {"error": True, "titulo": "🛑 Error Matemático", "mensaje": "Asegúrate de ingresar un polinomio válido."}
 
     resultados = []
-    current_r, current_s = float(r), float(s)
+    n = len(a) - 1
+    r = float(r0)
+    s = float(s0)
 
-    for i in range(1, max_iter + 1):
-        b = [0.0] * (n + 1)
-        c = [0.0] * (n + 1)
+    b = [0] * (n + 1)
+    c = [0] * (n + 1)
 
-        b[n] = a[n]
-        b[n-1] = a[n-1] + current_r * b[n]
-        for j in range(n-2, -1, -1):
-            b[j] = a[j] + current_r * b[j+1] + current_s * b[j+2]
+    # 2. Ciclo de Bairstow (Doble división sintética)
+    for iteracion in range(1, max_iter + 1):
+        # Primera división sintética (Arreglo b)
+        b[0] = a[0]
+        b[1] = a[1] + r * b[0]
+        for i in range(2, n + 1):
+            b[i] = a[i] + r * b[i-1] + s * b[i-2]
 
-        c[n] = b[n]
-        c[n-1] = b[n-1] + current_r * c[n]
-        
-        # 🐛 EL BUG ESTABA AQUÍ: Cambiamos el 1 por un 0. ¡Ahora c[1] sí nace!
-        for j in range(n-2, 0, -1): 
-            c[j] = b[j] + current_r * c[j+1] + current_s * c[j+2]
+        # Segunda división sintética (Arreglo c)
+        c[0] = b[0]
+        c[1] = b[1] + r * c[0]
+        for i in range(2, n): # Se calcula solo hasta n-1
+            c[i] = b[i] + r * c[i-1] + s * c[i-2]
 
-        det = c[2]*c[2] - c[3]*c[1]
-        
-        # Seguro anti-estancamiento
+        # Resolver sistema de ecuaciones para deltas
+        det = c[n-2] * c[n-2] - c[n-1] * c[n-3]
         if det == 0:
-            current_r += 0.01
-            current_s += 0.01
-            continue 
-        
-        dr = (-b[1]*c[2] - (-b[0]*c[3])) / det
-        ds = (c[2]*(-b[0]) - c[1]*(-b[1])) / det
+            return {"error": True, "titulo": "⚠️ Determinante Cero", "mensaje": "El sistema colapsó. Intenta con otros valores de r0 y s0."}
 
-        current_r += dr
-        current_s += ds
+        dr = (-b[n-1] * c[n-2] + b[n] * c[n-3]) / det
+        ds = (-b[n] * c[n-2] + b[n-1] * c[n-1]) / det
 
-        ea_r = abs(dr / current_r) * 100 if current_r != 0 else 100
-        ea_s = abs(ds / current_s) * 100 if current_s != 0 else 100
-        ea_max = max(ea_r, ea_s)
+        r += dr
+        s += ds
+
+        # Error máximo entre r y s
+        ear = abs(dr / r) * 100 if r != 0 else 100
+        eas = abs(ds / s) * 100 if s != 0 else 100
+        ea = max(ear, eas)
 
         resultados.append({
-            "iteracion": i,
-            "r": round(current_r, 8),
-            "s": round(current_s, 8),
-            "ea": round(ea_max, 8) if i > 1 else "---"
+            "iteracion": iteracion,
+            "r": round(r, 6),
+            "s": round(s, 6),
+            "ea": round(ea, 6)
         })
 
-        if ea_max < tol:
-            break
+        if ea < tol: break
 
-    disc = current_r**2 + 4 * current_s
-    if disc >= 0:
-        x1 = (current_r + math.sqrt(disc)) / 2
-        x2 = (current_r - math.sqrt(disc)) / 2
-        raiz_str = f"x1: {round(x1, 8)}, x2: {round(x2, 8)}"
-    else:
-        real = current_r / 2
-        imag = math.sqrt(-disc) / 2
-        raiz_str = f"x1,2: {round(real, 8)} ± {round(imag, 8)}i"
+    # 3. Calculamos las dos raíces encontradas por el factor cuadrático (x^2 - rx - s = 0)
+    D = r**2 + 4*s
+    x1 = (r + cmath.sqrt(D)) / 2
+    x2 = (r - cmath.sqrt(D)) / 2
+
+    def fmt_root(num):
+        if abs(num.imag) < 1e-8: return f"{round(num.real, 4)}"
+        return f"{round(num.real, 4)} {round(num.imag, 4):+}i"
+
+    raiz_mostrar = f"x₁ = {fmt_root(x1)} &nbsp; | &nbsp; x₂ = {fmt_root(x2)}"
+
+    # 4. Gráfica Visual
+    margen = 3
+    centro_x = x1.real if abs(x1.imag) < 1e-8 else 0
+    x_vals = np.linspace(centro_x - margen, centro_x + margen, 200)
+    try:
+        f_lambdify = sp.lambdify(x, f_simbolica, 'numpy')
+        y_vals = f_lambdify(x_vals)
+        if isinstance(y_vals, (int, float)): y_vals = np.full_like(x_vals, y_vals)
+        y_vals = np.clip(y_vals, -100, 100)
+    except: y_vals = np.zeros_like(x_vals)
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(x_vals, y_vals, label=f'P({x})', color='#6f42c1', linewidth=2)
+    plt.axhline(0, color='black', linewidth=1)
+    
+    # Dibujar las raíces solo si son reales
+    if abs(x1.imag) < 1e-8: plt.plot(x1.real, 0, 'go', markersize=8, label='Raíz x₁')
+    if abs(x2.imag) < 1e-8: plt.plot(x2.real, 0, 'yo', markersize=8, label='Raíz x₂')
+    
+    plt.grid(color='gray', linestyle=':', linewidth=0.5)
+    plt.legend(); plt.tight_layout()
+
+    img = io.BytesIO(); plt.savefig(img, format='png', transparent=True); img.seek(0)
+    grafica_url = base64.b64encode(img.getvalue()).decode('utf8'); plt.close()
 
     return {
         "tipo": "bairstow",
         "resultados": resultados,
-        "raiz": raiz_str,
-        "convergencia": f"Factor cuadrático hallado: x² - ({round(current_r, 4)})x - ({round(current_s, 4)})",
-        "grafica": None
+        "raiz": raiz_mostrar, # Usamos formato HTML limpio para que el front lo pinte bonito
+        "convergencia": "Extracción de un factor cuadrático.",
+        "grafica": grafica_url
     }
 
 # Rutas denavegación
@@ -1152,7 +1297,7 @@ def horner():
 def horner_newton():
     datos = None
     if request.method == 'POST':
-        funcion = request.form['funcion']
+        funcion = request.form['ecuacion_latex']
         x0 = float(request.form['x0'])
         tol = float(request.form['tol'])
         max_iter = int(request.form['max_iter'])
@@ -1165,26 +1310,29 @@ def horner_newton():
 def muller():
     datos = None
     if request.method == 'POST':
-        funcion = request.form['funcion']
+        funcion = request.form['ecuacion_latex']
         x0 = float(request.form['x0'])
         x1 = float(request.form['x1'])
         x2 = float(request.form['x2'])
         tol = float(request.form['tol'])
         max_iter = int(request.form['max_iter'])
+        
         datos = metodo_muller(funcion, x0, x1, x2, tol, max_iter)
+        
     return render_template('muller.html', datos=datos)
 
 @app.route('/bairstow', methods=['GET', 'POST'])
 def bairstow():
     datos = None
     if request.method == 'POST':
-        funcion = request.form['funcion']
-        r = float(request.form['r'])
-        s = float(request.form['s'])
+        funcion = request.form['ecuacion_latex']
+        r0 = float(request.form['r0'])
+        s0 = float(request.form['s0'])
         tol = float(request.form['tol'])
         max_iter = int(request.form['max_iter'])
-        datos = metodo_bairstow(funcion, r, s, tol, max_iter)
+        
+        datos = metodo_bairstow(funcion, r0, s0, tol, max_iter)
+        
     return render_template('bairstow.html', datos=datos)
-
 if __name__ == '__main__':
     app.run(debug=True)
