@@ -52,3 +52,6 @@ home.py: Archivo principal con las rutas de Flask y la lógica de los métodos n
 * **_resultados.html:** Plantilla parcial reutilizable para mostrar tablas y gráficas.
 
 * **.gitignore:** Archivos y carpetas que Git no debe subir (como venv/).
+
+ instalen el traductor de latex a formato pyton
+ pip install Flask sympy numpy matplotlib gunicorn antlr4-python3-runtime==4.11

@@ -1,37 +1,31 @@
-<!-- templates/_math_input.html -->
-<div class="mb-4">
-    <label class="form-label fw-bold">Ingrese la función f(x):</label>
-    
-    <!-- FIX: Agregamos display: block y min-height para que no colapse, 
-         y le metemos la variable de Jinja para que no borre lo que escribiste si hay error -->
-    <math-field id="formula" virtual-keyboard-mode="manual" 
-                style="display: block; width: 100%; min-height: 60px; font-size: 1.5rem; padding: 10px; border: 1px solid #ced4da; border-radius: 0.375rem; background-color: white;">
-        {{ request.form.get('ecuacion_latex', '') }}
-    </math-field>
-    
-    <!-- El input oculto también retiene el valor -->
-    <input type="hidden" name="ecuacion_latex" id="ecuacion_latex" value="{{ request.form.get('ecuacion_latex', '') }}">
-    
-    <div class="form-text">Haz clic en el cuadro o en el icono del teclado para ingresar la ecuación.</div>
+<!-- _math_input.html — MathLive input con diseño dark theme -->
+<div class="mb-3">
+  <label class="form-label-nm">Función f(x)</label>
+
+  <math-field id="formula" virtual-keyboard-mode="manual">
+    {{ request.form.get('ecuacion_latex', '') }}
+  </math-field>
+
+  <input type="hidden" name="ecuacion_latex" id="ecuacion_latex"
+         value="{{ request.form.get('ecuacion_latex', '') }}">
+
+  <p style="font-size:0.7rem; color:var(--text-muted); margin-top:6px; margin-bottom:0;">
+    <i class="bi bi-keyboard"></i>&nbsp; Usa el teclado virtual o escribe LaTeX directamente
+  </p>
 </div>
 
-<!-- SCRIPT INFALIBLE -->
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const mathField = document.getElementById('formula');
-        const hiddenInput = document.getElementById('ecuacion_latex');
-        
-        // 1. Sincronizar cada vez que presionas una tecla en la pizarra
-        mathField.addEventListener('input', function() {
-            hiddenInput.value = mathField.value;
-        });
+  document.addEventListener("DOMContentLoaded", function () {
+    const mf     = document.getElementById('formula');
+    const hidden = document.getElementById('ecuacion_latex');
 
-        // 2. Seguro de vida: Buscar el formulario padre y sincronizar al dar clic en Calcular
-        const formulario = hiddenInput.closest("form");
-        if (formulario) {
-            formulario.addEventListener("submit", function() {
-                hiddenInput.value = mathField.value;
-            });
-        }
-    });
+    // Sincroniza en cada keystroke dentro de la pizarra
+    mf.addEventListener('input', () => { hidden.value = mf.value; });
+
+    // Seguro de vida: sincroniza al hacer submit del formulario padre
+    const form = hidden.closest('form');
+    if (form) {
+      form.addEventListener('submit', () => { hidden.value = mf.value; });
+    }
+  });
 </script>

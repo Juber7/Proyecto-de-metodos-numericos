@@ -1,87 +1,79 @@
 {% extends 'base.html' %}
-
 {% block contenido %}
-  <script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
 
-  <div class="container bg-white p-4 rounded shadow-sm calculadora-numerica-widget mt-3">
-    <h2 class="mb-4" style="color: #6f42c1;"><i class="bi bi-arrow-repeat"></i> Método de Punto Fijo (Automático)</h2>
-    <p class="text-muted">
-      Ingresa tu ecuación original <strong class="text-dark">f(x)</strong>. Nuestro motor extraerá automáticamente las posibles <strong class="text-dark">g(x)</strong> y elegirá el despeje óptimo.
+<div class="page-header">
+  <div class="method-icon" style="background:rgba(199,146,234,0.15);">
+    <i class="bi bi-arrow-repeat" style="color:#c792ea;"></i>
+  </div>
+  <div>
+    <h2 style="color:#c792ea;">Punto Fijo <span style="font-size:0.7em; opacity:0.6;">(despeje automático)</span></h2>
+    <p>
+      Reformula f(x)=0 como x=g(x) y converge iterando xᵢ₊₁ = g(xᵢ).
+      El sistema evalúa múltiples despejes algebraicos y selecciona automáticamente
+      el que cumple <strong>|g'(x₀)| &lt; 1</strong> (condición de Banach).
     </p>
+  </div>
+</div>
 
-    <form method="POST" id="formNumerico" class="row g-3 mb-4 align-items-end">
-      <div class="col-md-2">
-        <label class="fw-bold text-orange">Valor Inicial (x0)</label>
-        <input type="number" step="any" name="x0" class="form-control" required placeholder="0" />
+<div class="card-nm">
+  <div class="card-nm-header"><i class="bi bi-sliders"></i> Parámetros de entrada</div>
+  <div class="card-nm-body">
+    <form method="POST">
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label-nm">Semilla x₀</label>
+          <input type="number" step="any" name="x0" class="form-control-nm"
+                 required placeholder="0" value="{{ request.form.get('x0','') }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-nm">Tolerancia (%)</label>
+          <input type="number" step="any" name="tol" class="form-control-nm"
+                 required placeholder="0.01" value="{{ request.form.get('tol','') }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-nm">Máx. iteraciones</label>
+          <input type="number" name="max_iter" class="form-control-nm"
+                 required placeholder="50" value="{{ request.form.get('max_iter','') }}">
+        </div>
       </div>
-      <div class="col-md-2">
-        <label>Tolerancia (%)</label>
-        <input type="number" step="any" name="tol" class="form-control" required placeholder="0.01" />
-      </div>
-      <div class="col-md-3">
-        <label>Max Iteraciones</label>
-        <input type="number" name="max_iter" class="form-control" required placeholder="50" />
-      </div>
-      
-      <div class="col-12 mt-4">
-          <label class="fw-bold" style="color: #6f42c1;">Función f(x) original</label>
-      </div>
-      
       {% include '_math_input.html' %}
-      
-      <div class="col-12 mt-4">
-        <button type="submit" class="btn text-white shadow-sm" style="background-color: #6f42c1;">
-            <i class="bi bi-calculator"></i> Encontrar Raíz Automáticamente
-        </button>
+
+      <div style="background:rgba(199,146,234,0.07); border:1px solid rgba(199,146,234,0.2);
+                  border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:16px;">
+        <p style="font-size:0.75rem; color:var(--text-muted); margin:0; line-height:1.6;">
+          <i class="bi bi-robot" style="color:#c792ea;"></i>
+          <strong style="color:#c792ea;">Auto-Despeje:</strong>
+          Ingresa la ecuación original f(x). No necesitas reformularla manualmente.
+          El sistema probará distintos despejes y elegirá el más estable.
+        </p>
       </div>
+
+      <button type="submit" class="btn-nm btn-purple-nm">
+        <i class="bi bi-magic"></i> Encontrar raíz automáticamente
+      </button>
     </form>
-    <hr />
   </div>
+</div>
 
-  <div class="container mt-3">
-    <div class="card shadow-sm mb-4">
-      <div class="card-header bg-dark text-white">
-        <i class="bi bi-graph-up"></i> Gráfica Interactiva en Tiempo Real
-      </div>
-      <div class="card-body p-0">
-        <div id="calculadora_desmos" style="width: 100%; height: 400px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"></div>
-      </div>
-    </div>
-  </div>
+<div class="section-label"><i class="bi bi-graph-up"></i> Gráfica interactiva — f(x) original</div>
+<div class="desmos-wrap mb-4">
+  <div id="desmos" style="width:100%; height:340px;"></div>
+</div>
 
-  <div class="container mt-3">
-    {% include '_resultados.html' %}
-  </div>
+{% include '_resultados.html' %}
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // 'formula' es el ID que tiene el input dentro de tu archivo _math_input.html
-        const mathField = document.getElementById('formula'); 
-        
-        // 1. Inicializar la calculadora de Desmos
-        const elt = document.getElementById('calculadora_desmos');
-        const calculator = Desmos.GraphingCalculator(elt, {
-            expressions: false, 
-            keypad: false 
-        });
-
-        // Función para actualizar la gráfica cada vez que el usuario escribe
-        function actualizarGrafica() {
-            const expresionLatex = mathField.value; 
-            
-            // Dibujamos f(x) para que el usuario vea las raíces
-            calculator.setExpression({ 
-                id: 'grafica_principal', 
-                latex: 'f(x)=' + expresionLatex, 
-                color: '#6f42c1' // Color morado para que combine con Punto Fijo
-            });
-        }
-
-        // 2. Escuchar cambios en la pizarra virtual
-        mathField.addEventListener('input', actualizarGrafica);
-        
-        // Carga inicial al entrar a la página
-        setTimeout(actualizarGrafica, 300);
-    });
-  </script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const mf   = document.getElementById('formula');
+  const calc = Desmos.GraphingCalculator(document.getElementById('desmos'), {
+    expressions: false, keypad: false, backgroundColor: '#0f1117'
+  });
+  function update() {
+    calc.setExpression({ id:'f', latex:'f(x)=' + (mf.value||'0'), color:'#c792ea' });
+  }
+  mf.addEventListener('input', update);
+  setTimeout(update, 350);
+});
+</script>
 {% endblock %}

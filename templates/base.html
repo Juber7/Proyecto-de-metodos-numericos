@@ -1,163 +1,697 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Métodos Numéricos</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Métodos Numéricos</title>
 
-    <script defer src="https://unpkg.com/mathlive"></script>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}?v=2" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+  <!-- Fonts: JetBrains Mono (code) + Inter (UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-    <style>
-      body {
-        background-color: #f8f9fa;
-        margin: 0;
-      }
-      .wrapper {
-        display: flex;
-        min-height: 100vh;
-      }
-      
-      /* === Estilos del Menú Lateral === */
+  <!-- MathLive & Bootstrap -->
+  <script defer src="https://unpkg.com/mathlive"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg-base:        #0d0f14;
+      --bg-panel:       #12151c;
+      --bg-card:        #161923;
+      --bg-card-hover:  #1b1f2d;
+      --bg-input:       #0f1117;
+      --border:         #1e2233;
+      --border-focus:   #3d4f7c;
+
+      --text-primary:   #e2e5f0;
+      --text-secondary: #7a819e;
+      --text-muted:     #4a5070;
+      --text-code:      #a8d8ff;
+
+      --accent-blue:    #4f9cf9;
+      --accent-green:   #43d9a2;
+      --accent-orange:  #f97b4f;
+      --accent-purple:  #c792ea;
+      --accent-yellow:  #ffd580;
+
+      --sidebar-w:      280px;
+      --radius:         10px;
+      --radius-sm:      6px;
+      --shadow:         0 4px 24px rgba(0,0,0,0.5);
+      --transition:     0.18s ease;
+    }
+
+    /* ── Reset & base ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────────── */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .sidebar-brand {
+      padding: 22px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-brand .brand-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: var(--radius-sm);
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .sidebar-brand p {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin: 0;
+      letter-spacing: 0.06em;
+    }
+
+    /* Nav sections */
+    .nav-section {
+      padding: 8px 12px;
+    }
+
+    .nav-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 8px 4px;
+      display: block;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.83rem;
+      transition: all var(--transition);
+      position: relative;
+      margin-bottom: 1px;
+    }
+
+    .nav-item i { font-size: 0.9rem; flex-shrink: 0; }
+
+    .nav-item:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: rgba(79,156,249,0.12);
+      color: var(--accent-blue);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 25%; bottom: 25%;
+      width: 3px;
+      border-radius: 0 2px 2px 0;
+      background: var(--accent-blue);
+    }
+
+    .nav-sub { padding-left: 28px; }
+
+    .nav-sub .nav-item {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .nav-sub .nav-item:hover { color: var(--text-secondary); }
+
+    /* Collapsible group header */
+    .nav-group-toggle {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 0.83rem;
+      cursor: pointer;
+      user-select: none;
+      transition: all var(--transition);
+      margin-bottom: 1px;
+    }
+
+    .nav-group-toggle:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .nav-group-toggle .toggle-arrow {
+      margin-left: auto;
+      font-size: 0.7rem;
+      transition: transform var(--transition);
+    }
+
+    .nav-group-toggle.open .toggle-arrow { transform: rotate(180deg); }
+
+    /* Method color badges */
+    .nav-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Main content ───────────────────────────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 32px 36px;
+      overflow-x: hidden;
+    }
+
+    /* ── Page header ────────────────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-header .method-icon {
+      width: 48px; height: 48px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .page-header h2 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0 0 4px;
+      line-height: 1.2;
+    }
+
+    .page-header p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    /* ── Cards ──────────────────────────────────────────────────────────────── */
+    .card-nm {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .card-nm-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-nm-body { padding: 20px 18px; }
+
+    /* ── Form elements ──────────────────────────────────────────────────────── */
+    .form-label-nm {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .form-control-nm {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      padding: 9px 12px;
+      width: 100%;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+    }
+
+    .form-control-nm:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(79,156,249,0.12);
+    }
+
+    .form-control-nm::placeholder { color: var(--text-muted); }
+
+    /* MathLive field */
+    math-field {
+      display: block;
+      width: 100%;
+      min-height: 58px;
+      background: var(--bg-input) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius-sm) !important;
+      color: var(--text-primary) !important;
+      font-size: 1.3rem;
+      padding: 10px 14px;
+      transition: border-color var(--transition);
+    }
+
+    math-field:focus-within {
+      border-color: var(--border-focus) !important;
+      box-shadow: 0 0 0 3px rgba(79,156,249,0.12) !important;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────────────── */
+    .btn-nm {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 10px 22px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-nm:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .btn-nm:active { transform: translateY(0); filter: brightness(0.95); }
+
+    .btn-primary-nm { background: var(--accent-blue); color: #0d0f14; }
+    .btn-green-nm   { background: var(--accent-green); color: #0d0f14; }
+    .btn-orange-nm  { background: var(--accent-orange); color: #0d0f14; }
+    .btn-purple-nm  { background: var(--accent-purple); color: #0d0f14; }
+    .btn-yellow-nm  { background: var(--accent-yellow); color: #0d0f14; }
+
+    /* ── Results ────────────────────────────────────────────────────────────── */
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .result-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .result-box .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .result-box .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-green);
+      word-break: break-all;
+    }
+
+    .result-box .value.small { font-size: 0.92rem; }
+
+    .result-box.success { border-color: rgba(67,217,162,0.35); }
+    .result-box.info    { border-color: rgba(79,156,249,0.25); }
+
+    /* ── Tables ─────────────────────────────────────────────────────────────── */
+    .table-nm {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+    }
+
+    .table-nm thead th {
+      background: #0d0f14;
+      color: var(--text-muted);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .table-nm tbody tr {
+      border-bottom: 1px solid rgba(30,34,51,0.8);
+      transition: background var(--transition);
+    }
+
+    .table-nm tbody tr:hover { background: var(--bg-card-hover); }
+    .table-nm tbody tr:last-child { border-bottom: none; }
+
+    .table-nm td {
+      padding: 9px 14px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .table-nm td.cell-iter   { color: var(--text-muted); font-weight: 700; }
+    .table-nm td.cell-result { color: var(--accent-green);  font-weight: 700; }
+    .table-nm td.cell-error  { color: var(--accent-orange); }
+    .table-nm td.cell-blue   { color: var(--accent-blue);   font-weight: 700; }
+    .table-nm td.cell-purple { color: var(--accent-purple); font-weight: 700; }
+    .table-nm td.cell-yellow { color: var(--accent-yellow); }
+
+    /* ── Alerts / Error boxes ────────────────────────────────────────────────── */
+    .alert-nm {
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      border: 1px solid;
+    }
+
+    .alert-nm .alert-icon { font-size: 1.2rem; flex-shrink: 0; padding-top: 2px; }
+
+    .alert-nm.danger {
+      background: rgba(249,123,79,0.08);
+      border-color: rgba(249,123,79,0.3);
+    }
+
+    .alert-nm.warning {
+      background: rgba(255,213,128,0.08);
+      border-color: rgba(255,213,128,0.3);
+    }
+
+    .alert-nm.success {
+      background: rgba(67,217,162,0.08);
+      border-color: rgba(67,217,162,0.3);
+    }
+
+    .alert-nm h5 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0 0 4px;
+    }
+
+    .alert-nm p { font-size: 0.85rem; margin: 0; color: var(--text-secondary); }
+    .alert-nm .tip { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+
+    /* ── Desmos container ────────────────────────────────────────────────────── */
+    .desmos-wrap {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    /* ── Plot image ──────────────────────────────────────────────────────────── */
+    .plot-wrap {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+      background: #0f1117;
+    }
+
+    .plot-wrap img {
+      width: 100%;
+      display: block;
+      border-radius: var(--radius);
+    }
+
+    /* ── Taylor polynomial box ───────────────────────────────────────────────── */
+    .poly-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-yellow);
+      word-break: break-all;
+      line-height: 1.7;
+    }
+
+    /* ── Bairstow factor cards ───────────────────────────────────────────────── */
+    .factor-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .factor-card-header {
+      padding: 12px 18px;
+      background: rgba(199,146,234,0.1);
+      border-bottom: 1px solid rgba(199,146,234,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .factor-card-header .factor-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--accent-purple);
+    }
+
+    .factor-card-header .iter-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      background: rgba(199,146,234,0.15);
+      color: var(--accent-purple);
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .factor-card-body { padding: 16px 18px; }
+
+    .root-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+    .root-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid;
+    }
+
+    .root-chip.real {
+      background: rgba(67,217,162,0.1);
+      border-color: rgba(67,217,162,0.35);
+      color: var(--accent-green);
+    }
+
+    .root-chip.complex {
+      background: rgba(249,123,79,0.1);
+      border-color: rgba(249,123,79,0.35);
+      color: var(--accent-orange);
+    }
+
+    /* ── Section divider ─────────────────────────────────────────────────────── */
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
       .sidebar {
-        width: 340px;
-        background-color: #212529;
-        color: white;
-        padding-top: 20px;
-        flex-shrink: 0;
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        overflow-y: auto;
+        width: 100%;
+        height: auto;
+        position: static;
       }
-      .sidebar a {
-        color: #ced4da;
-        text-decoration: none;
-        padding: 10px 20px;
-        display: block;
-        border-radius: 4px;
-        margin: 2px 10px;
-      }
-      .sidebar a:hover {
-        background-color: #495057;
-        color: white;
-      }
-      
-      .content {
-        flex: 1;
-        padding: 30px;
-        display: flex;
-        flex-direction: column;
-      }
-      .submenu a {
-        padding-left: 40px;
-        font-size: 0.9em;
-      }
-      
-      /* Efecto de Matriz Gigante para el Inicio */
-      .matrix-wrapper {
-        position: relative;
-        padding: 3rem 4rem;
-        margin: auto;
-        max-width: 900px;
-        text-align: center;
-      }
-      .matrix-wrapper::before,
-      .matrix-wrapper::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 40px;
-        border: 6px solid #212529;
-        border-radius: 8px;
-      }
-      .matrix-wrapper::before {
-        left: 0;
-        border-right: none;
-      }
-      .matrix-wrapper::after {
-        right: 0;
-        border-left: none;
-      }
-      
-      /* === MAGIA RESPONSIVE (MEDIA QUERIES) === */
-      @media (max-width: 768px) {
-        .wrapper {
-          flex-direction: column; /* Apila el menú arriba y el contenido abajo */
-        }
-        .sidebar {
-          width: 100%; /* El menú ocupa todo el ancho */
-          height: auto;
-          position: relative; /* Quita el sticky en celular para que no estorbe */
-          padding-top: 10px;
-          padding-bottom: 10px;
-        }
-        .content {
-          padding: 15px; /* Menos espacio a los lados en celular */
-        }
-      }
-      
-      /* Obliga a cualquier elemento dentro del panel derecho a quedarse quieto, 
-                                             ignorando las clases de Bootstrap como sticky-top */
-      .content .sticky-top {
-        position: static !important;
-        z-index: auto !important;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrapper">
-      <nav class="sidebar">
-        <div class="d-flex justify-content-between align-items-center px-3 mb-2 d-md-block text-center">
-          <h4 class="text-white mb-0 mb-md-4"><i class="bi bi-calculator"></i> Menú Numérico</h4>
-          <button class="btn btn-outline-light d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal"><i class="bi bi-list"></i></button>
-        </div>
+      .app-shell { flex-direction: column; }
+      .main-content { padding: 20px 16px; }
+      .result-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
 
-        <div class="collapse d-md-block" id="menuPrincipal">
-          <a href="/"><i class="bi bi-house-door"></i> Inicio</a>
-
-          <a href="#submenuRaices" data-bs-toggle="collapse" class="d-flex justify-content-between align-items-center mt-2">
-            <span><i class="bi bi-graph-up"></i> Raíces de Ecuaciones No Lineales</span>
-            <i class="bi bi-chevron-down small"></i>
-          </a>
-          <div class="collapse show" id="submenuRaices">
-            <div class="submenu">
-              <a href="#submenuCerrados" data-bs-toggle="collapse" class="d-flex justify-content-between align-items-center text-warning">Métodos Cerrados <i class="bi bi-chevron-down small"></i></a>
-              <div class="collapse" id="submenuCerrados">
-                <a href="/biseccion">- Bisección</a>
-                <a href="/falsa_posicion">- Regla falsa</a>
-              </div>
-            </div>
-
-            <div class="submenu mt-1">
-              <a href="#submenuAbiertos" data-bs-toggle="collapse" class="d-flex justify-content-between align-items-center text-warning">Métodos Abiertos <i class="bi bi-chevron-down small"></i></a>
-              <div class="collapse" id="submenuAbiertos">
-                <a href="/newton">- Newton-Raphson</a>
-                <a href="/secante">- Secante</a>
-                <a href="/punto_fijo">- Punto fijo</a>
-              </div>
-            </div>
-          </div>
-
-          <a href="/taylor" class="mt-2"><i class="bi bi-bar-chart-steps"></i> Series de Taylor</a>
-          <a href="/horner" class="mt-2"><i class="bi bi-layout-three-columns"></i> Método de Horner</a>
-          <a href="/bairstow" class="mt-2"><i class="bi bi-braces-asterisk"></i> Método de Bairstow</a>
-          <a href="/muller" class="mt-2"><i class="bi bi-bezier2"></i> Método de Muller</a>
-          <a href="/horner_newton" class="mt-2"><i class="bi bi-arrow-down-right-square"></i> Método de Punto Horner-Newton</a>
-        </div>
-      </nav>
-
-      <main class="content">
-        {% block contenido %}
-
-        {% endblock %}
-      </main>
+  <!-- ═══════════════════════════════════════════════════════ SIDEBAR ══════ -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">∫</div>
+      <div>
+        <h1>Num.Methods</h1>
+        <p>v2.0 · Defensive Mode</p>
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="nav-section">
+      <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
+        <i class="bi bi-house"></i> Inicio
+      </a>
 
-  </body>
+      <!-- Raíces -->
+      <span class="nav-label">Raíces de Ecuaciones</span>
+
+      <div class="nav-group-toggle open" onclick="toggleGroup(this, 'grpCerrados')">
+        <i class="bi bi-braces-asterisk"></i>
+        <span>Métodos Cerrados</span>
+        <i class="bi bi-chevron-down toggle-arrow"></i>
+      </div>
+      <div class="nav-sub collapse show" id="grpCerrados">
+        <a href="/biseccion"     class="nav-item {% if '/biseccion' in request.path %}active{% endif %}">
+          <i class="bi bi-arrows-collapse-vertical"></i> Bisección
+        </a>
+        <a href="/falsa_posicion" class="nav-item {% if '/falsa_posicion' in request.path %}active{% endif %}">
+          <i class="bi bi-slash-lg"></i> Regla Falsa
+        </a>
+      </div>
+
+      <div class="nav-group-toggle open" onclick="toggleGroup(this, 'grpAbiertos')">
+        <i class="bi bi-arrows-fullscreen"></i>
+        <span>Métodos Abiertos</span>
+        <i class="bi bi-chevron-down toggle-arrow"></i>
+      </div>
+      <div class="nav-sub collapse show" id="grpAbiertos">
+        <a href="/newton"     class="nav-item {% if '/newton' in request.path %}active{% endif %}">
+          <i class="bi bi-lightning-charge"></i> Newton-Raphson
+        </a>
+        <a href="/secante"    class="nav-item {% if '/secante' in request.path %}active{% endif %}">
+          <i class="bi bi-diagonal"></i> Secante
+        </a>
+        <a href="/punto_fijo" class="nav-item {% if '/punto_fijo' in request.path %}active{% endif %}">
+          <i class="bi bi-arrow-repeat"></i> Punto Fijo
+        </a>
+      </div>
+
+      <!-- Otros -->
+      <span class="nav-label" style="margin-top:8px">Algoritmos Especializados</span>
+
+      <a href="/taylor"       class="nav-item {% if '/taylor' in request.path %}active{% endif %}">
+        <i class="bi bi-layers"></i> Series de Taylor
+      </a>
+      <a href="/horner"       class="nav-item {% if '/horner' in request.path and 'newton' not in request.path %}active{% endif %}">
+        <i class="bi bi-table"></i> Horner
+      </a>
+      <a href="/horner_newton" class="nav-item {% if '/horner_newton' in request.path %}active{% endif %}">
+        <i class="bi bi-bullseye"></i> Horner-Newton
+      </a>
+      <a href="/muller"       class="nav-item {% if '/muller' in request.path %}active{% endif %}">
+        <i class="bi bi-bezier2"></i> Müller
+      </a>
+      <a href="/bairstow"     class="nav-item {% if '/bairstow' in request.path %}active{% endif %}">
+        <i class="bi bi-scissors"></i> Bairstow
+      </a>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════ MAIN CONTENT ══════ -->
+  <main class="main-content">
+    {% block contenido %}{% endblock %}
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function toggleGroup(btn, targetId) {
+    btn.classList.toggle('open');
+    const el = document.getElementById(targetId);
+    if (el) el.classList.toggle('show');
+  }
+</script>
+</body>
 </html>

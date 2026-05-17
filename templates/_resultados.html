@@ -1,196 +1,237 @@
 {% if datos %}
+
+  {# ══════════════════════════════════════════════ ERROR ══════════════════════ #}
   {% if datos.error %}
-    {% if datos.link_sympy %}
-      <div class="alert alert-danger shadow-sm border-danger">
-        <h5 class="alert-heading text-danger"><i class="bi bi-exclamation-triangle-fill"></i> {{ datos.titulo }}</h5>
-        <p class="mb-2 text-dark">{{ datos.mensaje }}</p>
-        <hr class="border-danger opacity-25" />
-        <p class="mb-3 text-dark">
-          <strong>💡 Regla de Oro:</strong> {{ datos.consejo }}
-        </p>
-        <a href="{{ datos.link_sympy }}" target="_blank" class="btn btn-outline-danger btn-sm fw-bold"><i class="bi bi-book"></i> Leer Guía de SymPy (Gotchas)</a>
+
+    <div class="alert-nm {% if datos.link_sympy %}danger{% else %}warning{% endif %}">
+      <div class="alert-icon">
+        {% if datos.link_sympy %}⛔{% else %}⚠️{% endif %}
       </div>
-    {% else %}
-      <div class="alert alert-warning shadow-sm border-warning">
-        <h5 class="alert-heading text-dark">{{ datos.titulo }}</h5>
-        <p class="mb-2 text-dark">{{ datos.mensaje }}</p>
-        <hr class="border-warning" />
-        <p class="mb-0 text-muted">
-          <strong>Consejo:</strong> {{ datos.consejo }}
-        </p>
-      </div>
-    {% endif %}
-  {% else %}
-   <div class="row mb-4">
-      <div class="col-md-6">
-        <div class="alert alert-success h-100 d-flex flex-column justify-content-center shadow-sm">
-          <h4 class="alert-heading">¡Resultado Encontrado!</h4>
-          <p class="fs-4 mb-0 fw-bold text-success">
-            {% if datos.tipo == 'taylor' %}
-                {{ datos.aprox_final }}
-            {% else %}
-                {{ datos.raiz }}
-            {% endif %}
-          </p>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="alert alert-info h-100 d-flex flex-column justify-content-center shadow-sm">
-          {% if datos.tipo == 'taylor' %}
-            <strong>Valor Real Original:</strong>
-            <p class="mb-0 fs-5 fw-bold">{{ datos.valor_verdadero }}</p>
-          {% else %}
-            <strong>Nivel de Convergencia:</strong>
-            <p class="mb-0">{{ datos.convergencia }}</p>
-          {% endif %}
-        </div>
+      <div>
+        <h5>{{ datos.titulo }}</h5>
+        <p>{{ datos.mensaje }}</p>
+        {% if datos.consejo %}
+          <p class="tip"><i class="bi bi-lightbulb"></i> {{ datos.consejo }}</p>
+        {% endif %}
+        {% if datos.link_sympy %}
+          <a href="{{ datos.link_sympy }}" target="_blank"
+             style="font-family:'JetBrains Mono',monospace; font-size:0.72rem;
+                    color:var(--accent-orange); text-decoration:none; margin-top:8px; display:inline-block;">
+            <i class="bi bi-box-arrow-up-right"></i> Guía de Sintaxis SymPy
+          </a>
+        {% endif %}
       </div>
     </div>
 
+  {# ══════════════════════════════════════════════ SUCCESS ══════════════════ #}
+  {% else %}
+
+    {# ── Resultado principal + convergencia ─────────────────────────────── #}
+    <div class="result-grid">
+
+      <div class="result-box success">
+        <div class="label">✓ Resultado</div>
+        {% if datos.tipo == 'taylor' %}
+          <div class="value">{{ datos.aprox_final }}</div>
+        {% elif datos.tipo == 'bairstow' %}
+          <div class="root-chips" style="margin:0">
+            {% for grupo in datos.grupos %}
+              {% for rt in grupo.raices %}
+                <span class="root-chip {% if 'i' in rt %}complex{% else %}real{% endif %}">
+                  {{ rt | safe }}
+                </span>
+              {% endfor %}
+            {% endfor %}
+          </div>
+        {% elif datos.tipo == 'horner' %}
+          <div class="value">{{ datos.raiz | safe }}</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:0.72rem;
+                      color:var(--text-muted); margin-top:4px;">P(x₀) evaluado</div>
+        {% else %}
+          <div class="value">{{ datos.raiz | safe }}</div>
+        {% endif %}
+      </div>
+
+      <div class="result-box info">
+        <div class="label">
+          {% if datos.tipo == 'taylor' %}Valor Real{% else %}Convergencia{% endif %}
+        </div>
+        {% if datos.tipo == 'taylor' %}
+          <div class="value">{{ datos.valor_verdadero }}</div>
+        {% else %}
+          <div class="value small" style="color:var(--text-secondary); font-size:0.82rem; line-height:1.5;">
+            {{ datos.convergencia }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Polinomio de Taylor ─────────────────────────────────────────────── #}
     {% if datos.tipo == 'taylor' and datos.polinomio_final %}
-      <div class="alert alert-warning shadow-sm mb-4 border-warning">
-        <h5 class="text-dark"><i class="bi bi-braces"></i> Polinomio de Taylor Generado P(x)</h5>
-        <hr class="border-warning opacity-50">
-        <div class="text-danger p-2 rounded bg-white border" style="font-family: 'Courier New', Courier, monospace; font-size: 1.2em; word-wrap: break-word;">
-          {{ datos.polinomio_final }}
-        </div>
-      </div>
+      <div class="section-label"><i class="bi bi-braces"></i> Polinomio P(x)</div>
+      <div class="poly-box mb-4">{{ datos.polinomio_final }}</div>
     {% endif %}
+
+    {# ── Gráfica ─────────────────────────────────────────────────────────── #}
     {% if datos.grafica %}
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-dark text-white">
-          <i class="bi bi-graph-up"></i> Análisis Visual
-        </div>
-        <div class="card-body text-center overflow-auto bg-light">
-          <img src="data:image/png;base64,{{ datos.grafica }}" class="img-fluid rounded" alt="Gráfica de la función" />
-        </div>
+      <div class="section-label"><i class="bi bi-graph-up"></i> Análisis visual</div>
+      <div class="plot-wrap mb-4">
+        <img src="data:image/png;base64,{{ datos.grafica }}" alt="Gráfica" />
       </div>
     {% endif %}
 
-    <div class="table-responsive shadow-sm rounded">
-      <table class="table table-bordered table-hover text-center mb-0 bg-white align-middle">
-        <thead class="table-dark">
-          <tr>
-            {% if datos.tipo == 'taylor' %}
-              <th>Orden (n)</th>
-              <th>Derivada f^(n)(x)</th>
-              <th>f^(n)(x0)</th>
-              <th>Término Calculado</th>
-              <th>Aproximación Acumulada</th>
-              <th>Error Verdadero (%)</th>
-            {% else %}
-              <th>Iteración</th>
+    {# ══════════════════════════════ BAIRSTOW — Factor cards ══════════════ #}
+    {% if datos.tipo == 'bairstow' %}
 
-              {% if datos.tipo == 'abierto' %}
-                <th>xi</th>
-                <th>f(xi)</th>
-                <th>f'(xi)</th>
-                <th>xi+1</th>
-              {% elif datos.tipo == 'horner_newton' %}
-                <th>xi</th>
-                <th>P(xi) (Horner 1)</th>
-                <th>P'(xi) (Horner 2)</th>
-                <th>xi+1</th>
-              {% elif datos.tipo == 'secante' %}
-                <th>xi-1</th>
-                <th>xi</th>
-                <th>f(xi-1)</th>
-                <th>f(xi)</th>
-                <th>xi+1</th>
-              {% elif datos.tipo == 'punto_fijo' %}
-                <th>xi</th>
-                <th>g(xi) = xi+1</th>
-              {% elif datos.tipo == 'horner' %}
-                <th>Potencia</th>
-                <th>Coeficiente Original (a)</th>
-                <th>Operación (x0 * b_ant)</th>
-                <th>Nuevo Coeficiente (b)</th>
-              {% elif datos.tipo == 'muller' %}
-                <th>x0</th>
-                <th>x1</th>
-                <th>x2</th>
-                <th>xr (x3)</th>
-                <th>f(xr)</th>
-              {% elif datos.tipo == 'bairstow' %}
-                <th>Iteración</th>
-                <th>Valor r</th>
-                <th>Valor s</th>
-                <th>Error Máx (%)</th>
-              {% else %}
-                <th>xl</th>
-                <th>xu</th>
-                <th>xr</th>
-                <th>f(xl)</th>
-                <th>f(xr)</th>
-              {% endif %}
+      <div class="section-label"><i class="bi bi-layers"></i> Detalle por factor cuadrático</div>
 
-              <th>Error (%)</th>
+      {% for grupo in datos.grupos %}
+        <div class="factor-card">
+          <div class="factor-card-header">
+            <span class="factor-title"><i class="bi bi-slash-circle"></i> {{ grupo.titulo }}</span>
+            {% if grupo.n_iter %}
+              <span class="iter-badge">{{ grupo.n_iter }} iteraciones</span>
             {% endif %}
-          </tr>
-        </thead>
-        <tbody class="table-group-divider">
-          {% for fila in datos.resultados %}
+          </div>
+          <div class="factor-card-body">
+
+            <div class="root-chips">
+              {% for rt in grupo.raices %}
+                <span class="root-chip {% if 'i' in rt %}complex{% else %}real{% endif %}">
+                  {{ rt | safe }}
+                </span>
+              {% endfor %}
+            </div>
+
+            {% if grupo.iteraciones %}
+              <p style="font-size:0.7rem; color:var(--text-muted); margin-bottom:8px;">
+                <i class="bi bi-arrow-repeat"></i> Todas las iteraciones ({{ grupo.n_iter }} total):
+              </p>
+              <div style="overflow-x:auto; max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm);">
+                <table class="table-nm">
+                  <thead>
+                    <tr>
+                      <th>#</th><th>r</th><th>s</th><th>Error Máx (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for f in grupo.iteraciones %}
+                      <tr>
+                        <td class="cell-iter">{{ f.num }}</td>
+                        <td class="cell-blue">{{ f.r }}</td>
+                        <td class="cell-purple">{{ f.s }}</td>
+                        <td class="{% if f.ea != '---' and f.ea < 1 %}cell-result{% else %}cell-error{% endif %}">{{ f.ea }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">
+                <i class="bi bi-lightning-charge"></i>
+                Resuelto directamente con la fórmula cuadrática.
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+
+    {# ══════════════════════════════ TODOS LOS DEMÁS — Tabla estándar ═══════ #}
+    {% else %}
+
+      <div class="section-label"><i class="bi bi-table"></i> Tabla de iteraciones</div>
+      <div style="overflow-x:auto;" class="card-nm">
+        <table class="table-nm">
+          <thead>
             <tr>
               {% if datos.tipo == 'taylor' %}
-                <td class="fw-bold text-secondary">{{ fila.orden }}</td>
-                <td class="text-danger" style="font-family: 'Courier New', Courier, monospace; font-size: 1.1em;">
-                  {{ fila.derivada }}
-                </td>
-                <td>{{ fila.derivada_evaluada }}</td>
-                <td>{{ fila.termino_calculado }}</td>
-                <td class="fw-bold text-warning fs-5">{{ fila.aproximacion }}</td>
-                <td class="text-muted">{{ fila.et }}</td>
+                <th>Orden n</th>
+                <th>f⁽ⁿ⁾(x)</th>
+                <th>f⁽ⁿ⁾(x₀)</th>
+                <th>Término</th>
+                <th>Aprox. acumulada</th>
+                <th>Error real (%)</th>
               {% else %}
-                <td class="fw-bold">{{ fila.iteracion }}</td>
-
+                <th>#</th>
                 {% if datos.tipo == 'abierto' %}
-                  <td>{{ fila.xi }}</td>
-                  <td>{{ fila.fxi }}</td>
-                  <td>{{ fila.dfxi }}</td>
-                  <td class="fw-bold text-success">{{ fila.x_siguiente }}</td>
+                  <th>xᵢ</th><th>f(xᵢ)</th><th>f'(xᵢ)</th><th>xᵢ₊₁</th>
                 {% elif datos.tipo == 'horner_newton' %}
-                  <td>{{ fila.xi }}</td>
-                  <td>{{ fila.pxi }}</td>
-                  <td>{{ fila.dpxi }}</td>
-                  <td class="fw-bold text-success">{{ fila.x_siguiente }}</td>
+                  <th>xᵢ</th><th>P(xᵢ)</th><th>P'(xᵢ)</th><th>xᵢ₊₁</th>
                 {% elif datos.tipo == 'secante' %}
-                  <td>{{ fila.x_previo }}</td> <td>{{ fila.x_actual }}</td> <td>{{ fila.fx_previo }}</td>
-                  <td>{{ fila.fx_actual }}</td>
-                  <td class="fw-bold text-info">{{ fila.x_siguiente }}</td>
+                  <th>xᵢ₋₁</th><th>xᵢ</th><th>f(xᵢ₋₁)</th><th>f(xᵢ)</th><th>xᵢ₊₁</th>
                 {% elif datos.tipo == 'punto_fijo' %}
-                  <td>{{ fila.xi }}</td>
-                  <td class="fw-bold text-primary">{{ fila.x_siguiente }}</td> {% elif datos.tipo == 'horner' %}
-                  <td>
-                    <small class="text-muted">x^{{ fila.grado }}</small>
-                  </td>
-                  <td>{{ fila.a }}</td>
-                  <td>{{ fila.operacion }}</td>
-                  <td class="fw-bold text-success">{{ fila.b }}</td>
+                  <th>xᵢ</th><th>g(xᵢ)</th>
+                {% elif datos.tipo == 'horner' %}
+                  <th>x^n</th><th>a</th><th>x₀·b_ant</th><th>b</th>
                 {% elif datos.tipo == 'muller' %}
-                  <td>{{ fila.x0 }}</td>
-                  <td>{{ fila.x1 }}</td>
-                  <td>{{ fila.x2 }}</td>
-                  <td class="fw-bold text-danger">{{ fila.xr }}</td>
-                  <td>{{ fila.fxr }}</td>
-                {% elif datos.tipo == 'bairstow' %}
-                  <td>{{ fila.iteracion }}</td>
-                  <td class="text-primary fw-bold">{{ fila.r }}</td>
-                  <td class="text-info fw-bold">{{ fila.s }}</td>
-                  <td>{{ fila.ea }}</td>
+                  <th>x₀</th><th>x₁</th><th>x₂</th><th>xᵣ</th><th>f(xᵣ)</th>
                 {% else %}
-                  <td>{{ fila.xl }}</td>
-                  <td>{{ fila.xu }}</td>
-                  <td class="fw-bold text-primary">{{ fila.xr }}</td>
-                  <td>{{ fila.fxl }}</td>
-                  <td>{{ fila.fxr }}</td>
+                  <th>xₗ</th><th>xᵤ</th><th>xᵣ</th><th>f(xₗ)</th><th>f(xᵣ)</th>
                 {% endif %}
-
-                <td class="text-danger">{{ fila.ea }}</td>
+                <th>Error (%)</th>
               {% endif %}
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% endif %}
-{% endif %}
+          </thead>
+          <tbody>
+            {% for fila in datos.resultados %}
+              <tr>
+                {% if datos.tipo == 'taylor' %}
+                  <td class="cell-iter">{{ fila.orden }}</td>
+                  <td class="cell-yellow" style="text-align:left; font-size:0.72rem;">
+                    {{ fila.derivada }}
+                  </td>
+                  <td>{{ fila.derivada_evaluada }}</td>
+                  <td>{{ fila.termino_calculado }}</td>
+                  <td class="cell-result">{{ fila.aproximacion }}</td>
+                  <td class="cell-error">{{ fila.et }}</td>
+                {% else %}
+                  <td class="cell-iter">{{ fila.iteracion }}</td>
+                  {% if datos.tipo == 'abierto' %}
+                    <td>{{ fila.xi }}</td>
+                    <td>{{ fila.fxi }}</td>
+                    <td class="cell-purple">{{ fila.dfxi }}</td>
+                    <td class="cell-result">{{ fila.x_siguiente }}</td>
+                  {% elif datos.tipo == 'horner_newton' %}
+                    <td>{{ fila.xi }}</td>
+                    <td class="cell-blue">{{ fila.pxi }}</td>
+                    <td class="cell-purple">{{ fila.dpxi }}</td>
+                    <td class="cell-result">{{ fila.x_siguiente }}</td>
+                  {% elif datos.tipo == 'secante' %}
+                    <td>{{ fila.x_previo }}</td>
+                    <td>{{ fila.x_actual }}</td>
+                    <td>{{ fila.fx_previo }}</td>
+                    <td>{{ fila.fx_actual }}</td>
+                    <td class="cell-result">{{ fila.x_siguiente }}</td>
+                  {% elif datos.tipo == 'punto_fijo' %}
+                    <td>{{ fila.xi }}</td>
+                    <td class="cell-result">{{ fila.gxi }}</td>
+                  {% elif datos.tipo == 'horner' %}
+                    <td class="cell-iter" style="font-size:0.7rem;">x^{{ fila.grado }}</td>
+                    <td>{{ fila.a }}</td>
+                    <td class="cell-blue">{{ fila.operacion }}</td>
+                    <td class="cell-result">{{ fila.b }}</td>
+                  {% elif datos.tipo == 'muller' %}
+                    <td>{{ fila.x0 }}</td>
+                    <td>{{ fila.x1 }}</td>
+                    <td>{{ fila.x2 }}</td>
+                    <td class="cell-result">{{ fila.xr }}</td>
+                    <td>{{ fila.fxr }}</td>
+                  {% else %}
+                    <td>{{ fila.xl }}</td>
+                    <td>{{ fila.xu }}</td>
+                    <td class="cell-blue">{{ fila.xr }}</td>
+                    <td>{{ fila.fxl }}</td>
+                    <td>{{ fila.fxr }}</td>
+                  {% endif %}
+                  <td class="cell-error">{{ fila.ea }}</td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    {% endif %}{# end if bairstow #}
+
+  {% endif %}{# end if error #}
+{% endif %}{# end if datos #}

@@ -1,67 +1,101 @@
 {% extends 'base.html' %}
-
 {% block contenido %}
-  <script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+<script src="https://www.desmos.com/api/v1.8/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
 
-  <div class="container bg-white p-4 rounded shadow-sm">
-    <h2 class="mb-4" style="color: #6f42c1;"><i class="bi bi-scissors"></i> Método de Bairstow</h2>
-    <p class="text-muted">Extraccíon cuadrática que encuentra <strong>dos raíces de golpe</strong> (reales o imaginarias) para polinomios de grado 3 o mayor, ajustando dinámicamente los valores 'r' y 's'.</p>
-
-    <form method="POST" id="formNumerico" class="row g-3 mb-4 align-items-end">
-      <div class="col-md-3">
-        <label class="fw-bold text-primary">Valor Inicial (r0)</label>
-        <input type="number" step="any" name="r0" class="form-control" required placeholder="1" />
-      </div>
-      <div class="col-md-3">
-        <label class="fw-bold text-info">Valor Inicial (s0)</label>
-        <input type="number" step="any" name="s0" class="form-control" required placeholder="1" />
-      </div>
-      <div class="col-md-3">
-        <label>Tolerancia (%)</label>
-        <input type="number" step="any" name="tol" class="form-control" required placeholder="0.01" />
-      </div>
-      <div class="col-md-3">
-        <label>Max Iteraciones</label>
-        <input type="number" name="max_iter" class="form-control" required placeholder="50" />
-      </div>
-      
-      <div class="col-12 mt-4">
-          <label class="fw-bold" style="color: #6f42c1;">Polinomio P(x) (Grado ≥ 3)</label>
-      </div>
-      
-      {% include '_math_input.html' %}
-      
-      <div class="col-12 mt-4">
-        <button type="submit" class="btn text-white shadow-sm" style="background-color: #6f42c1;">
-            <i class="bi bi-search"></i> Extraer Raíces
-        </button>
-      </div>
-    </form>
-    <hr />
-
-    <div class="card shadow-sm mb-4 border-0">
-      <div class="card-header bg-dark text-white">
-        <i class="bi bi-graph-up"></i> Gráfica Interactiva
-      </div>
-      <div class="card-body p-0">
-        <div id="calculadora_desmos" style="width: 100%; height: 400px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"></div>
-      </div>
-    </div>
-
-    {% include '_resultados.html' %}
+<div class="page-header">
+  <div class="method-icon" style="background:rgba(199,146,234,0.15);">
+    <i class="bi bi-scissors" style="color:#c792ea;"></i>
   </div>
+  <div>
+    <h2 style="color:#c792ea;">Bairstow — Deflación Completa</h2>
+    <p>
+      Extrae factores cuadráticos (x²−rx−s) iterativamente hasta obtener
+      <strong>todas las raíces</strong> del polinomio (reales y complejas).
+      Cada extracción usa doble División Sintética y un sistema 2×2 de Newton.
+    </p>
+  </div>
+</div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const mathField = document.getElementById('formula'); 
-        const elt = document.getElementById('calculadora_desmos');
-        const calculator = Desmos.GraphingCalculator(elt, { expressions: false, keypad: false });
+<!-- Deflation diagram -->
+<div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+            padding:16px 20px; margin-bottom:18px; font-family:'JetBrains Mono',monospace;
+            font-size:0.75rem; color:var(--text-muted); line-height:1.8;">
+  <div style="color:var(--accent-purple); font-weight:700; margin-bottom:6px; font-size:0.68rem;
+              letter-spacing:0.1em; text-transform:uppercase;">Proceso de deflación</div>
+  P(x) grado n
+  <span style="color:var(--accent-purple)"> →[Bairstow]→ </span>
+  (x²−rx−s) · Q₁(x)
+  <span style="color:var(--text-muted)"> → 2 raíces</span><br>
+  Q₁(x) grado n-2
+  <span style="color:var(--accent-purple)"> →[Bairstow]→ </span>
+  (x²−rx−s) · Q₂(x)
+  <span style="color:var(--text-muted)"> → 2 raíces más</span><br>
+  <span style="color:var(--text-muted)">... hasta agotar el polinomio</span>
+</div>
 
-        function actualizarGrafica() {
-            calculator.setExpression({ id: 'grafica_principal', latex: 'P(x)=' + mathField.value, color: '#6f42c1' });
-        }
-        mathField.addEventListener('input', actualizarGrafica);
-        setTimeout(actualizarGrafica, 300);
-    });
-  </script>
+<div class="card-nm">
+  <div class="card-nm-header"><i class="bi bi-sliders"></i> Parámetros de entrada</div>
+  <div class="card-nm-body">
+    <form method="POST">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label-nm">Semilla r₀</label>
+          <input type="number" step="any" name="r0" class="form-control-nm"
+                 required placeholder="1" value="{{ request.form.get('r0','') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-nm">Semilla s₀</label>
+          <input type="number" step="any" name="s0" class="form-control-nm"
+                 required placeholder="1" value="{{ request.form.get('s0','') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-nm">Tolerancia (%)</label>
+          <input type="number" step="any" name="tol" class="form-control-nm"
+                 required placeholder="0.01" value="{{ request.form.get('tol','') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-nm">Máx. iteraciones</label>
+          <input type="number" name="max_iter" class="form-control-nm"
+                 required placeholder="50" value="{{ request.form.get('max_iter','') }}">
+        </div>
+      </div>
+
+      <div style="background:rgba(199,146,234,0.07); border:1px solid rgba(199,146,234,0.2);
+                  border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:12px;">
+        <p style="font-size:0.73rem; color:var(--text-muted); margin:0;">
+          <i class="bi bi-info-circle" style="color:#c792ea;"></i>
+          Solo acepta <strong style="color:#c792ea;">polinomios de grado ≥ 3</strong>.
+          Para mejor convergencia, intenta con r₀=s₀=1 primero.
+        </p>
+      </div>
+
+      {% include '_math_input.html' %}
+
+      <button type="submit" class="btn-nm btn-purple-nm">
+        <i class="bi bi-scissors"></i> Extraer todas las raíces
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="section-label"><i class="bi bi-graph-up"></i> Gráfica interactiva</div>
+<div class="desmos-wrap mb-4">
+  <div id="desmos" style="width:100%; height:340px;"></div>
+</div>
+
+{% include '_resultados.html' %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const mf   = document.getElementById('formula');
+  const calc = Desmos.GraphingCalculator(document.getElementById('desmos'), {
+    expressions: false, keypad: false, backgroundColor: '#0f1117'
+  });
+  function update() {
+    calc.setExpression({ id:'P', latex:'P(x)=' + (mf.value||'0'), color:'#c792ea' });
+  }
+  mf.addEventListener('input', update);
+  setTimeout(update, 350);
+});
+</script>
 {% endblock %}

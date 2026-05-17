@@ -1,22 +1,249 @@
 {% extends 'base.html' %}
-
 {% block contenido %}
-  <div class="d-flex flex-grow-1 align-items-center justify-content-center w-100">
-    <div class="matrix-wrapper">
-      <h1 class="display-4 text-primary fw-bold mb-3">Proyecto de Métodos Numéricos</h1>
-      <p class="lead text-muted mb-5">Bienvenido a la herramienta de cálculo. Usa el menú lateral para iniciar.</p>
 
-      <div class="row justify-content-center gap-4">
-        <div class="col-md-5 p-4 border rounded shadow-sm bg-white" style="transition: transform 0.2s;">
-          <h5 class="text-primary"><i class="bi bi-arrow-down-right-circle"></i> Métodos Cerrados</h5>
-          <p class="text-muted small mb-0">Requieren de un intervalo que encierre a la raíz. (Ej: Bisección).</p>
-        </div>
+<style>
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+.method-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+.method-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--card-accent, var(--accent-blue));
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.method-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--card-accent, var(--accent-blue));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.method-card:hover::before { opacity: 1; }
+.method-card .card-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  width: fit-content;
+}
+.method-card .card-icon {
+  font-size: 1.4rem;
+  margin-bottom: 2px;
+}
+.method-card .card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.method-card .card-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+.method-card .card-conv {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--card-accent, var(--accent-blue));
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
 
-        <div class="col-md-5 p-4 border rounded shadow-sm bg-white" style="transition: transform 0.2s;">
-          <h5 class="text-success"><i class="bi bi-arrows-fullscreen"></i> Métodos Abiertos</h5>
-          <p class="text-muted small mb-0">Requieren valores iniciales sin necesidad de encerrar la raíz. (Ej: Newton).</p>
-        </div>
-      </div>
+.hero-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-banner::after {
+  content: '∫∑∂∇';
+  position: absolute;
+  right: 32px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.03);
+  letter-spacing: 0.2em;
+  pointer-events: none;
+}
+.hero-banner h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-banner p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  max-width: 520px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(67,217,162,0.1);
+  border: 1px solid rgba(67,217,162,0.25);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--accent-green);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+</style>
+
+<!-- Hero banner -->
+<div class="hero-banner mb-4">
+  <span class="status-pill mb-3">
+    <span class="status-dot"></span>
+    Defensive Mode · v2.0
+  </span>
+  <h1>Métodos Numéricos</h1>
+  <p>
+    Implementación de producción de los principales algoritmos de análisis numérico.
+    Cada método incluye validación defensiva, gráficas interactivas y tabla de convergencia.
+  </p>
+  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+    <div style="text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--accent-blue);">10</div>
+      <div style="font-size:0.7rem; color:var(--text-muted);">Métodos</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--accent-green);">1e-12</div>
+      <div style="font-size:0.7rem; color:var(--text-muted);">Umbral div/0</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--accent-purple);">ℂ</div>
+      <div style="font-size:0.7rem; color:var(--text-muted);">Raíces complejas</div>
     </div>
   </div>
+</div>
+
+<!-- Métodos cerrados -->
+<div class="section-label"><i class="bi bi-lock"></i> Métodos Cerrados</div>
+<div class="hero-grid">
+  <a href="/biseccion" class="method-card" style="--card-accent: #4f9cf9">
+    <span class="card-tag" style="background:rgba(79,156,249,0.15); color:#4f9cf9;">Cerrado</span>
+    <div class="card-icon">✂️</div>
+    <p class="card-title">Bisección</p>
+    <p class="card-desc">Divide el intervalo a la mitad iterativamente garantizando convergencia si hay cambio de signo.</p>
+    <div class="card-conv">O(n) — lineal · requiere [xl, xu]</div>
+  </a>
+  <a href="/falsa_posicion" class="method-card" style="--card-accent: #43d9a2">
+    <span class="card-tag" style="background:rgba(67,217,162,0.15); color:#43d9a2;">Cerrado</span>
+    <div class="card-icon">📐</div>
+    <p class="card-title">Regla Falsa</p>
+    <p class="card-desc">Usa la recta secante entre los extremos del intervalo para acelerar la convergencia.</p>
+    <div class="card-conv">O(n) — lineal · más rápida en funciones convexas</div>
+  </a>
+</div>
+
+<!-- Métodos abiertos -->
+<div class="section-label mt-3"><i class="bi bi-unlock"></i> Métodos Abiertos</div>
+<div class="hero-grid">
+  <a href="/newton" class="method-card" style="--card-accent: #f97b4f">
+    <span class="card-tag" style="background:rgba(249,123,79,0.15); color:#f97b4f;">Abierto</span>
+    <div class="card-icon">⚡</div>
+    <p class="card-title">Newton-Raphson</p>
+    <p class="card-desc">Usa la derivada analítica para converger cuadráticamente. El método más potente para funciones suaves.</p>
+    <div class="card-conv">O(n²) — cuadrático · requiere f'(x)</div>
+  </a>
+  <a href="/secante" class="method-card" style="--card-accent: #c792ea">
+    <span class="card-tag" style="background:rgba(199,146,234,0.15); color:#c792ea;">Abierto</span>
+    <div class="card-icon">📏</div>
+    <p class="card-title">Secante</p>
+    <p class="card-desc">Aproxima la derivada con diferencias finitas. Superlineal sin necesidad de derivar.</p>
+    <div class="card-conv">O(φ) — superlineal · sin derivada analítica</div>
+  </a>
+  <a href="/punto_fijo" class="method-card" style="--card-accent: #c792ea">
+    <span class="card-tag" style="background:rgba(199,146,234,0.15); color:#c792ea;">Abierto</span>
+    <div class="card-icon">🔁</div>
+    <p class="card-title">Punto Fijo</p>
+    <p class="card-desc">Reformula f(x)=0 como x=g(x). El sistema elige automáticamente el despeje convergente.</p>
+    <div class="card-conv">Lineal · despeje automático · |g'(x₀)| &lt; 1</div>
+  </a>
+</div>
+
+<!-- Especializados -->
+<div class="section-label mt-3"><i class="bi bi-cpu"></i> Algoritmos Especializados</div>
+<div class="hero-grid">
+  <a href="/taylor" class="method-card" style="--card-accent: #ffd580">
+    <span class="card-tag" style="background:rgba(255,213,128,0.15); color:#ffd580;">Serie</span>
+    <div class="card-icon">📊</div>
+    <p class="card-title">Series de Taylor</p>
+    <p class="card-desc">Aproxima f(x) con un polinomio construido a partir de sus derivadas en un punto base.</p>
+    <div class="card-conv">Σ f⁽ⁿ⁾(x₀)/n! · (x−x₀)ⁿ</div>
+  </a>
+  <a href="/horner" class="method-card" style="--card-accent: #ffd580">
+    <span class="card-tag" style="background:rgba(255,213,128,0.15); color:#ffd580;">Polinomio</span>
+    <div class="card-icon">🗂️</div>
+    <p class="card-title">Horner</p>
+    <p class="card-desc">Evaluación de polinomios por división sintética. Mínimo de operaciones aritméticas.</p>
+    <div class="card-conv">O(n) mults · solo polinomios</div>
+  </a>
+  <a href="/horner_newton" class="method-card" style="--card-accent: #43d9a2">
+    <span class="card-tag" style="background:rgba(67,217,162,0.15); color:#43d9a2;">Híbrido</span>
+    <div class="card-icon">🎯</div>
+    <p class="card-title">Horner-Newton</p>
+    <p class="card-desc">Combina Newton-Raphson con doble división sintética. Ideal para polinomios de alto grado.</p>
+    <div class="card-conv">Cuadrático · Birge-Vieta</div>
+  </a>
+  <a href="/muller" class="method-card" style="--card-accent: #f97b4f">
+    <span class="card-tag" style="background:rgba(249,123,79,0.15); color:#f97b4f;">Complejo</span>
+    <div class="card-icon">🌀</div>
+    <p class="card-title">Müller</p>
+    <p class="card-desc">Ajusta una parábola a tres puntos. Puede encontrar raíces complejas que los demás métodos no detectan.</p>
+    <div class="card-conv">O(1.84) · raíces ℝ y ℂ</div>
+  </a>
+  <a href="/bairstow" class="method-card" style="--card-accent: #c792ea">
+    <span class="card-tag" style="background:rgba(199,146,234,0.15); color:#c792ea;">Deflación</span>
+    <div class="card-icon">🔬</div>
+    <p class="card-title">Bairstow</p>
+    <p class="card-desc">Extrae factores cuadráticos iterativamente para encontrar TODAS las raíces del polinomio a la vez.</p>
+    <div class="card-conv">Deflación completa · grado ≥ 3</div>
+  </a>
+</div>
+
 {% endblock %}
